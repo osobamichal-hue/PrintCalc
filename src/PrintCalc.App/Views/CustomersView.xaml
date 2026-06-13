@@ -1,0 +1,129 @@
+<UserControl x:Class="PrintCalc.App.Views.CustomersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#F4F8FF" BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
+            <TextBlock Text="Zákazníci" FontSize="18" FontWeight="SemiBold" />
+        </Border>
+
+        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+        <GroupBox Header="Přidat / upravit zákazníka" Margin="0">
+            <Grid Margin="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,6">
+                    <TextBlock Text="Název zákazníka *" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,8,6">
+                    <TextBlock Text="IČ" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewCompanyId, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,8,6">
+                    <TextBlock Text="DIČ" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewVatId, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,6">
+                    <TextBlock Text="Ulice" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewStreet, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,8,6">
+                    <TextBlock Text="Město" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewCity, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,8,6">
+                    <TextBlock Text="PSČ" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewZip, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
+                    <TextBlock Text="E-mail" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewEmail, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,8,0">
+                    <TextBlock Text="Telefon" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewPhone, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,8,0">
+                    <TextBlock Text="Splatnost (dny)" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewInvoiceDueDays, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,8,8,0">
+                    <TextBlock Text="Výchozí platba" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding NewPreferredPaymentMethod, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.RowSpan="4" Grid.Column="3" Orientation="Vertical" VerticalAlignment="Bottom">
+                    <Button Content="Uložit nového" Command="{Binding AddCommand}" Margin="0,0,0,8" Padding="12,6" />
+                    <Button Content="Vyčistit" Command="{Binding ClearFormCommand}" Padding="12,6" Style="{StaticResource SecondaryButtonStyle}" />
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        </Border>
+
+        <Border Grid.Row="2" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+        <WrapPanel Margin="0">
+            <Button Content="Uložit změny" Command="{Binding SaveCommand}" Margin="0,0,8,0" Padding="12,6" />
+            <Button Content="Obnovit seznam" Command="{Binding RefreshCommand}" Padding="12,6" Margin="0,0,8,0" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Content="Smazat vybraného" Command="{Binding DeleteCommand}" Padding="12,6" Style="{StaticResource DangerButtonStyle}" />
+        </WrapPanel>
+        </Border>
+
+        <Border Grid.Row="3" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="8">
+        <DataGrid
+                  ItemsSource="{Binding Items}"
+                  SelectedItem="{Binding SelectedCustomer}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  IsReadOnly="True"
+                  MouseDoubleClick="CustomersGrid_OnMouseDoubleClick">
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Přidat" Command="{Binding AddCommand}" />
+                    <MenuItem Header="Editovat" Click="EditCustomer_OnClick" />
+                    <MenuItem Header="Uložit" Command="{Binding SaveCommand}" />
+                    <MenuItem Header="Smazat" Command="{Binding DeleteCommand}" />
+                    <MenuItem Header="Obnovit" Command="{Binding RefreshCommand}" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Název" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
+                <DataGridTextColumn Header="IČ" Binding="{Binding CompanyId, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                <DataGridTextColumn Header="DIČ" Binding="{Binding VatId, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                <DataGridTextColumn Header="Ulice" Binding="{Binding Street, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
+                <DataGridTextColumn Header="Město" Binding="{Binding City, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                <DataGridTextColumn Header="PSČ" Binding="{Binding Zip, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                <DataGridTextColumn Header="E-mail" Binding="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                <DataGridTextColumn Header="Telefon" Binding="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                <DataGridTextColumn Header="Splatnost (dny)" Binding="{Binding InvoiceDueDays}" Width="110" />
+                <DataGridTextColumn Header="Platba" Binding="{Binding PreferredPaymentMethod}" Width="120" />
+            </DataGrid.Columns>
+        </DataGrid>
+        </Border>
+        <materialDesign:Snackbar Grid.Row="4"
+                                 Margin="0,8,0,0"
+                                 Message="{Binding StatusMessage}"
+                                 IsActive="{Binding StatusMessage, Converter={StaticResource StringNotEmptyToBoolConverter}}" />
+    </Grid>
+</UserControl>

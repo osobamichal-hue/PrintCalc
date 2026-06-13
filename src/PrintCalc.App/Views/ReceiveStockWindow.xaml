@@ -1,0 +1,90 @@
+<Window x:Class="PrintCalc.App.Views.ReceiveStockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:PrintCalc.App.Converters"
+        Title="Příjem na sklad"
+        Width="760"
+        Height="700"
+        MinWidth="520"
+        MinHeight="420"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <converters:DecimalFieldConverter x:Key="DecimalFieldConverter" />
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Expander Header="Karta 1/4 - Výběr typu filamentu" IsExpanded="True" Margin="0,0,0,8">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="Vyberte existující typ filamentu" />
+                        <ComboBox ItemsSource="{Binding Types}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding ReceiveTypeId}" Margin="0,4,0,4" />
+                        <TextBlock Text="Nový typ založte v modulu Správa typů filamentů." Foreground="Gray" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Karta 2/4 - Množství a cena" IsExpanded="True" Margin="0,0,0,8">
+                    <StackPanel Margin="8">
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Hmotnost (kg)" />
+                                <TextBox>
+                                    <TextBox.Text>
+                                        <Binding Path="ReceiveWeightKg" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                    </TextBox.Text>
+                                </TextBox>
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="Cena/kg" />
+                                <TextBox>
+                                    <TextBox.Text>
+                                        <Binding Path="ReceivePricePerKg" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                    </TextBox.Text>
+                                </TextBox>
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Kusy (cívky/ks)" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding ReceivePieces, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Karta 3/4 - Dodavatel, šarže, expirace" IsExpanded="False" Margin="0,0,0,8">
+                    <StackPanel Margin="8">
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Dodavatel" />
+                                <TextBox Text="{Binding ReceiveSupplier, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="Šarže" />
+                                <TextBox Text="{Binding ReceiveLotNumber, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Expirace" Margin="0,6,0,0" />
+                        <DatePicker SelectedDate="{Binding ReceiveExpirationDate}" />
+                        <TextBlock Text="Poznámka" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding ReceiveStockNotes, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Karta 4/4 - Potvrzení příjmu" IsExpanded="True">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="{Binding ReceiveWeightKg, StringFormat=Hmotnost: {0:F3} kg}" />
+                        <TextBlock Text="{Binding ReceivePricePerKg, StringFormat=Cena: {0:F2} Kč/kg}" />
+                        <TextBlock Text="{Binding ReceivePieces, StringFormat=Kusy: {0}}" />
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <WrapPanel Grid.Row="1" Margin="0,10,0,0">
+            <Button Content="Potvrdit příjem na sklad" Padding="12,6" Margin="0,0,8,0" Click="ConfirmReceive_OnClick" />
+            <Button Content="Načíst QR (jpg/png)" Command="{Binding ImportQrImageCommand}" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Zavřít" Padding="12,6" Click="Close_OnClick" />
+        </WrapPanel>
+    </Grid>
+</Window>

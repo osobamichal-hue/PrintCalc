@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Disable online NuGet vulnerability audit to avoid NU1900 on unstable/offline networks -->
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+</Project>

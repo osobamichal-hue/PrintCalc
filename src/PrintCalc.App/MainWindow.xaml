@@ -1,0 +1,121 @@
+﻿<Window x:Class="PrintCalc.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PrintCalc.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        mc:Ignorable="d"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="PrintCalc – 3D tisk"
+        Height="720" Width="1200"
+        MinHeight="500" MinWidth="900">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:NavEntry}">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="30" Height="30" CornerRadius="15" Background="#26FFFFFF" Margin="0,0,10,0">
+                    <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#F4EEFF" FontSize="14" />
+                </Border>
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="#F7F4FF" FontWeight="SemiBold" FontSize="14" />
+            </StackPanel>
+        </DataTemplate>
+
+        <Style x:Key="NavListBoxStyle" TargetType="ListBox">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+
+        <Style x:Key="NavListBoxItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="12,12" />
+            <Setter Property="Margin" Value="0,4,0,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Grid>
+                            <Border x:Name="Indicator" Width="4" HorizontalAlignment="Left" Margin="0,8,0,8" Background="#00FFFFFF" CornerRadius="2" />
+                            <Border x:Name="ItemRoot" Background="Transparent" CornerRadius="12">
+                                <ContentPresenter Margin="10,0,0,0" />
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#22FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#2EFFFFFF" />
+                                <Setter TargetName="Indicator" Property="Background" Value="#FF59D7FF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource AppBgBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Margin="10,10,0,10" CornerRadius="22,0,0,22">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#C65B3FB3" Offset="0" />
+                    <GradientStop Color="#BC3A2B91" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid Margin="12,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Margin="2,2,2,10" Padding="14,12" CornerRadius="14" BorderThickness="1" BorderBrush="#24FFFFFF" Background="#18FFFFFF">
+                    <StackPanel>
+                        <TextBlock Text="PrintCalc" FontWeight="SemiBold" FontSize="18" Foreground="#FFFFFF" />
+                        <TextBlock Text="3D tisk • výroba • finance" Foreground="#E9E9FF" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding Menu}"
+                         SelectedItem="{Binding SelectedMenu}"
+                         Style="{StaticResource NavListBoxStyle}"
+                         ItemContainerStyle="{StaticResource NavListBoxItemStyle}" />
+
+                <Border Grid.Row="2" Margin="4,10,4,2" Padding="10,8" CornerRadius="10" Background="#22FFFFFF">
+                    <TextBlock Text="PrintCalc Desktop" Foreground="#E9E9FF" FontSize="12" HorizontalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Column="1" Margin="0,10,10,10" Background="#EFFFFFFF" CornerRadius="0,22,22,0" BorderBrush="#CCE0FF" BorderThickness="1">
+            <Grid Margin="14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Height="58" CornerRadius="14" Padding="16,0" Margin="0,0,0,12" Background="#FFF7F9FF" BorderBrush="#FFDDE5FF" BorderThickness="1">
+                    <DockPanel LastChildFill="False">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="#FF5B43D6" Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding SelectedMenu.Title}" FontSize="20" FontWeight="SemiBold" Foreground="#FF221A44" />
+                        </StackPanel>
+                        <Border DockPanel.Dock="Right" Padding="10,4" CornerRadius="10" Background="#FFEAE7FF" VerticalAlignment="Center">
+                            <TextBlock Text="Desktop app" Foreground="#FF5D4CC4" FontWeight="SemiBold" FontSize="12" />
+                        </Border>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="1" Background="#FFFFFFFF" CornerRadius="14" BorderBrush="#FFE1E8FA" BorderThickness="1" Padding="8">
+                    <ContentControl Content="{Binding CurrentPage}" />
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+

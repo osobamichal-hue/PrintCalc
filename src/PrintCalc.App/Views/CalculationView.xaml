@@ -1,0 +1,350 @@
+<UserControl x:Class="PrintCalc.App.Views.CalculationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:PrintCalc.App.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             Language="cs-CZ">
+    <UserControl.Resources>
+        <converters:DecimalFieldConverter x:Key="DecimalFieldConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <Style x:Key="MinuteInputTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <EventSetter Event="GotKeyboardFocus" Handler="MinuteTextBox_OnGotKeyboardFocus" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="MinuteTextBox_OnPreviewMouseLeftButtonDown" />
+        </Style>
+    </UserControl.Resources>
+    <Border Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource WizardHeaderBorderStyle}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource WizardHeaderTextStyle}" Text="{Binding WizardStepTitle}" />
+                <CheckBox DockPanel.Dock="Right" Content="Kompaktní tabulky" IsChecked="{Binding CompactTables}" Foreground="White" VerticalAlignment="Center" Margin="24,0,0,0" />
+            </DockPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" SelectedIndex="{Binding WizardStepIndex}" Style="{StaticResource WizardTabControlStyle}">
+            <TabItem Header="Krok 1 - Zdroj dat">
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <DockPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock DockPanel.Dock="Top" Text="Přetáhněte do prostřední oblasti:" TextWrapping="Wrap" Margin="0,0,0,8" FontWeight="SemiBold" />
+                        <StackPanel>
+                            <TextBlock Text="Filamenty" FontWeight="SemiBold" Margin="0,8,0,4" />
+                            <ListBox x:Name="FilamentList"
+                                     ItemsSource="{Binding Filaments}"
+                                     DisplayMemberPath="Name"
+                                     Height="150"
+                                     PreviewMouseLeftButtonDown="List_OnPreviewMouseLeftButtonDown"
+                                     PreviewMouseMove="FilamentList_OnPreviewMouseMove" />
+                            <TextBlock Text="Tiskárny" FontWeight="SemiBold" Margin="0,12,0,4" />
+                            <ListBox x:Name="PrinterList"
+                                     ItemsSource="{Binding Printers}"
+                                     DisplayMemberPath="Name"
+                                     Height="130"
+                                     PreviewMouseLeftButtonDown="List_OnPreviewMouseLeftButtonDown"
+                                     PreviewMouseMove="PrinterList_OnPreviewMouseMove" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <StackPanel Grid.Column="1">
+                        <Border x:Name="DropZone"
+                                MinHeight="130"
+                                Background="#14166EAA"
+                                BorderBrush="#507D9BC4"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="16"
+                                AllowDrop="True"
+                                Drop="DropZone_OnDrop"
+                                DragOver="DropZone_OnDragOver">
+                            <StackPanel>
+                                <TextBlock Text="Sem přetáhněte 3MF/GCode / filament / tiskárnu" FontWeight="SemiBold" />
+                                <Button Content="Nebo vybrat 3MF/GCode soubor..." Width="240" Margin="0,8,0,8" Click="Pick3Mf_OnClick" />
+                                <TextBlock Margin="0,8,0,0" Text="{Binding FilamentSummary, StringFormat=Materiál: {0}}" />
+                                <TextBlock Text="{Binding PrinterSummary, StringFormat=Tiskárna: {0}}" />
+                                <TextBlock Text="{Binding ModelPathDisplay, StringFormat=Model: {0}}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Margin="0,8,0,0" Text="{Binding ThreeMfWarnings}" TextWrapping="Wrap" Foreground="DarkOrange" />
+                        <GroupBox Header="Výběr (alternativa k přetažení)" Margin="0,10,0,0" Padding="8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Zákazník" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedCustomerId}" Margin="0,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Filament" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Filaments}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedFilamentTypeId}" Margin="0,4" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Tiskárna" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Printers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedPrinterId}" Margin="0,4" />
+                            </Grid>
+                        </GroupBox>
+                        <Expander Header="Pokročilé" Margin="0,8,0,0">
+                            <Grid Margin="8,6,8,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Model DB" VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding Models}"
+                                          DisplayMemberPath="Name"
+                                          SelectedValuePath="Id"
+                                          SelectedValue="{Binding SelectedModelId}"
+                                          Margin="0,4" />
+                            </Grid>
+                        </Expander>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Krok 2 - Parametry tisku">
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="Hmotnost (g)" />
+                        <TextBox Margin="0,4,0,8">
+                            <TextBox.Text>
+                                <Binding Path="MaterialGrams" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock Margin="0,0,0,8" Foreground="Gray"
+                                   Text="{Binding MaterialGramsPerPieceDisplay, StringFormat=Na 1 ks: {0:N2} g}" />
+                        <TextBlock Text="Čas tisku (h + min)" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                            <TextBox Width="60" Text="{Binding PrintDurationHours, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text=" h " VerticalAlignment="Center" Margin="6,0" />
+                            <TextBox Width="60"
+                                     MaxLength="2"
+                                     Style="{StaticResource MinuteInputTextBoxStyle}"
+                                     Text="{Binding PrintDurationMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text=" min" VerticalAlignment="Center" Margin="6,0" />
+                        </StackPanel>
+                        <TextBlock Margin="0,0,0,8" Foreground="Gray"
+                                   Text="{Binding PrintHoursPerPieceDisplay, StringFormat=Na 1 ks: {0:N3} h}" />
+                        <TextBlock Text="Kusů na podložce" />
+                        <TextBox Text="{Binding PiecesPerBuild, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" />
+                        <TextBlock Text="Požadovaný počet kusů" />
+                        <TextBox Text="{Binding RequiredPieces, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="Marže (%)" />
+                        <TextBox Text="{Binding MarginPercent, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" />
+                        <TextBlock Text="Cena filamentu (Kč/kg)" />
+                        <TextBox Text="{Binding FilamentPricePerKg, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" />
+                        <CheckBox Content="Materiál zákazníka (cena materiálu 0 Kč; poznámka v nabídce a faktuře)"
+                                  IsChecked="{Binding CustomerSuppliedMaterial}"
+                                  Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Krok 3 - Modelování a metadata">
+                <StackPanel Margin="0,10,0,0">
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="Název kalkulace" />
+                            <TextBox Text="{Binding CalculationTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" />
+                        </StackPanel>
+                        <StackPanel Margin="8,0,0,0">
+                            <TextBlock Text="Datum" />
+                            <DatePicker SelectedDate="{Binding CalculationDateTime}" Margin="0,4,0,8" />
+                        </StackPanel>
+                    </UniformGrid>
+                    <CheckBox Content="Započítat cenu modelování do kalkulace" IsChecked="{Binding IncludeModelDesign}" Margin="0,0,0,8" />
+                    <TextBlock Foreground="Gray" Text="Při reprintu vypněte. Čas a hodinovka zůstanou uložené, ale do ceny se nepromítnou." Margin="0,0,0,8" />
+                    <Button Content="Pouze modelování (bez tisku)" Command="{Binding SetModelingOnlyModeCommand}" Padding="12,6" Width="240" Margin="0,0,0,10" />
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="Tvorba modelu (h + min)" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                                <TextBox Width="60" Text="{Binding ModelDesignDurationHours, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text=" h " VerticalAlignment="Center" Margin="6,0" />
+                                <TextBox Width="60"
+                                         MaxLength="2"
+                                         Style="{StaticResource MinuteInputTextBoxStyle}"
+                                         Text="{Binding ModelDesignDurationMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text=" min" VerticalAlignment="Center" Margin="6,0" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Margin="8,0,0,0">
+                            <TextBlock Text="Hodinovka tvorby modelu (globální, Kč/h)" />
+                            <TextBox Margin="0,4,0,8">
+                                <TextBox.Text>
+                                    <Binding Path="ModelingHourlyRate" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                        </StackPanel>
+                    </UniformGrid>
+                    <TextBlock Text="Vlastní text položky do nabídky (řádek 3D tisk)" FontWeight="SemiBold" Margin="0,12,0,4" />
+                    <TextBox Text="{Binding QuotePrintDescriptionOverride, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="48"
+                             MaxLength="512"
+                             SpellCheck.IsEnabled="True" />
+                    <TextBlock Foreground="Gray"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Text="Prázdné pole = automaticky „název kalkulace - 3D tisk“. U detailní nabídky zůstává popis modelování stále z času a sazby. Při „Materiálu zákazníka“ se na konec doplní krátká poznámka."
+                               Margin="0,4,0,0" />
+                    <TextBlock Margin="0,6,0,0"
+                               TextWrapping="Wrap"
+                               FontStyle="Italic"
+                               Text="{Binding QuotePrintLinePreview, StringFormat=Náhled řádku tisk: {0}}" />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Krok 4 - Výpočet a uložení">
+                <StackPanel Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Přepočítat" Command="{Binding ComputeCommand}" Padding="16,8" Margin="0,0,8,0" />
+                        <Button Content="Uložit změny vybrané" Command="{Binding UpdateSelectedCalculationCommand}" Padding="16,8" Margin="0,0,8,0" />
+                        <Button Content="Vydat materiál ze skladu" Command="{Binding IssueMaterialCommand}" Padding="16,8" />
+                    </StackPanel>
+                    <GroupBox Header="Výsledek" Padding="12">
+                        <StackPanel>
+                            <CheckBox Content="Ručně upravit ceny (hotová kalkulace)"
+                                      IsChecked="{Binding ManualPriceEditingEnabled}"
+                                      Margin="0,0,0,8" />
+                            <TextBlock Text="Materiál (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultMaterial" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="Strojní čas (tiskárna) (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultPrint" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="{Binding ResultPrintBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock Text="Energie (elektřina) (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultEnergy" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="{Binding ResultEnergyBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock Text="Tvorba modelu (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultModelDesign" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="Start tisku (z tiskárny) (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultStartFee" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="{Binding ResultStartFeeBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding ResultPrintRuns, StringFormat=Počet opakování tisku: {0}x}" />
+                            <TextBlock Text="{Binding ResultUnitPrice, StringFormat=Cena za 1 ks: {0:N0} Kč}" />
+                            <TextBlock Text="{Binding ResultUnitBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <TextBlock Foreground="Gray" FontSize="11" TextWrapping="Wrap"
+                                       Text="Hodinovka u tiskárny má pokrýt strojní čas včetně odpisu/amortizace a režie, které nechcete rozepisovat; energie se dopočítává z kWh/h tiskárny a ceny elektřiny v nastavení." />
+                            <TextBlock Text="{Binding ResultSubtotal, StringFormat=Mezisoučet (bez marže): {0:N0} Kč}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding ResultTotal, StringFormat=Celkem za požadované množství (s marží): {0:N0} Kč}" FontSize="16" FontWeight="Bold" />
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Krok 5 - Uložené kalkulace">
+                <DockPanel Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Button Content="Obnovit seznam" Command="{Binding RefreshCalculationsCommand}" Margin="0,0,8,0" Padding="12,6" />
+                        <Button Content="Načíst do formuláře" Command="{Binding LoadSelectedCalculationCommand}" Margin="0,0,8,0" Padding="12,6" />
+                        <Button Content="Tisk/Export PDF" Command="{Binding ExportSelectedCalculationPdfCommand}" Margin="0,0,8,0" Padding="12,6" />
+                        <Button Content="Smazat kalkulaci" Command="{Binding DeleteSelectedCalculationCommand}" Margin="0,0,8,0" Padding="12,6" />
+                        <Button Content="Vytvořit nabídku z vybrané kalkulace" Command="{Binding CreateQuoteFromCalculationCommand}" Padding="12,6" />
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding Calculations}"
+                              SelectedItem="{Binding SelectedCalculation}"
+                              RowHeight="{Binding TableRowHeight}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              MouseDoubleClick="CalculationsGrid_OnMouseDoubleClick">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Otevřít k editaci" Command="{Binding PlacementTarget.DataContext.OpenSelectedForEditCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Načíst do formuláře" Command="{Binding PlacementTarget.DataContext.LoadSelectedCalculationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Exportovat PDF" Command="{Binding PlacementTarget.DataContext.ExportSelectedCalculationPdfCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Smazat kalkulaci" Command="{Binding PlacementTarget.DataContext.DeleteSelectedCalculationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Vytvořit nabídku" Command="{Binding PlacementTarget.DataContext.CreateQuoteFromCalculationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Obnovit seznam" Command="{Binding PlacementTarget.DataContext.RefreshCalculationsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="150" />
+                            <DataGridTextColumn Header="Režim" Binding="{Binding ModeLabel}" Width="170" />
+                            <DataGridTextColumn Header="Název" Binding="{Binding Title}" Width="*" />
+                            <DataGridTextColumn Header="g" Binding="{Binding MaterialGrams, StringFormat=F2}" Width="80" />
+                            <DataGridTextColumn Header="h" Binding="{Binding PrintHours, StringFormat=F2}" Width="80" />
+                            <DataGridTextColumn Header="Ks/podl." Binding="{Binding PiecesPerBuild}" Width="85" />
+                            <DataGridTextColumn Header="Požad." Binding="{Binding RequiredPieces}" Width="85" />
+                            <DataGridTextColumn Header="Tisky" Binding="{Binding PrintRuns}" Width="70" />
+                            <DataGridTextColumn Header="1 ks" Binding="{Binding UnitPrice, StringFormat=F2}" Width="90" />
+                            <DataGridTextColumn Header="Celkem" Binding="{Binding TotalWithMargin, StringFormat=F2}" Width="100" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock DockPanel.Dock="Bottom" Text="Tip: dvojklik na kalkulaci ji načte do formuláře." Foreground="Gray" Margin="0,8,0,0" />
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+
+        <DockPanel Grid.Row="2" Margin="0,8,0,0">
+            <materialDesign:Snackbar DockPanel.Dock="Left"
+                                     Width="360"
+                                     Message="{Binding StatusMessage}"
+                                     IsActive="{Binding StatusMessage, Converter={StaticResource StringNotEmptyToBoolConverter}}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Zpět"
+                        Command="{Binding PrevStepCommand}"
+                        IsEnabled="{Binding CanGoPrevStep}"
+                        Style="{StaticResource WizardNavButtonStyle}"
+                        Margin="0,0,8,0"
+                        Visibility="{Binding IsCreationFlowStep, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Button Content="Potvrdit a pokračovat"
+                        Command="{Binding NextStepCommand}"
+                        IsEnabled="{Binding CanGoNextStep}"
+                        Style="{StaticResource WizardNavButtonStyle}"
+                        Visibility="{Binding IsIntermediateCreationStep, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Button Content="Uložit kalkulaci"
+                        Command="{Binding SaveCurrentCalculationCommand}"
+                        Style="{StaticResource WizardNavButtonStyle}"
+                        Visibility="{Binding IsResultStep, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Button Content="Nová kalkulace"
+                        Command="{Binding StartNewCalculationCommand}"
+                        Style="{StaticResource WizardNavButtonStyle}"
+                        Margin="8,0,8,0"
+                        Visibility="{Binding IsSavedCalculationsStep, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Button Content="Tisk/Export PDF"
+                        Command="{Binding ExportSelectedCalculationPdfCommand}"
+                        Style="{StaticResource WizardNavButtonStyle}"
+                        Visibility="{Binding IsSavedCalculationsStep, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+    </Border>
+</UserControl>

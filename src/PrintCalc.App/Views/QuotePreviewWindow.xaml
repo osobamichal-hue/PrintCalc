@@ -1,0 +1,131 @@
+<Window x:Class="PrintCalc.App.Views.QuotePreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Náhled nabídky"
+        WindowStartupLocation="CenterOwner"
+        Width="1000"
+        Height="700">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
+    <Grid Background="#F5F5F5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{Binding AccentBrush}" Padding="14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="CENOVÁ NABÍDKA - NÁHLED" FontSize="30" Foreground="White" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StyleLabel, StringFormat=Styl: {0}}" Foreground="#DDEEFF" />
+                </StackPanel>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding TotalText}"
+                           Foreground="White"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsAurora, Converter={StaticResource BoolToVisibility}}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{Binding AccentDarkBrush}" Padding="12" Margin="0,0,12,0">
+                <StackPanel>
+                    <Grid Width="130" Height="130" HorizontalAlignment="Center" Margin="0,0,0,14"
+                          Visibility="{Binding LogoAreaVisibility}">
+                        <Border BorderBrush="#333" BorderThickness="2" CornerRadius="65" />
+                        <Image Source="{Binding LogoPath}" Stretch="Uniform" Margin="8" Visibility="{Binding LogoVisibility}" />
+                    </Grid>
+                    <TextBlock Text="DODAVATEL" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding SupplierName}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierAddress}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierCity}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierIco}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierDic}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierEmail}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SupplierPhone}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Column="1">
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding HeaderText}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding DateText}" />
+                        <TextBlock Text="{Binding DueText}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding PaymentMethodText}" />
+                        <TextBlock Text="{Binding IbanText}" />
+                        <TextBlock Text="{Binding SwiftText}" />
+                        <TextBlock Text="{Binding VariableSymbolText}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="ODBĚRATEL" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding CustomerName}" />
+                        <TextBlock Text="{Binding CustomerAddress}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerIco}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerDic}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerContact}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="DODACÍ ADRESA ODBĚRATELE" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding CustomerName}" />
+                        <TextBlock Text="{Binding CustomerAddress}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerIco}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerDic}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CustomerContact}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <DataGrid ItemsSource="{Binding Lines}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          Margin="0,0,0,8">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="POLOŽKA" Binding="{Binding Description}" Width="*" />
+                        <DataGridTextColumn Header="CENA" Binding="{Binding UnitPrice, StringFormat=F2}" Width="110" />
+                        <DataGridTextColumn Header="MNOŽSTVÍ" Binding="{Binding Quantity, StringFormat=0.##}" Width="90" />
+                        <DataGridTextColumn Header="SPOLU BEZ DPH" Binding="{Binding LineTotal, StringFormat=F2}" Width="130" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding NetText}" />
+                    <TextBlock Text="{Binding VatText}" />
+                    <Border Background="{Binding AccentDarkBrush}" Padding="10,6" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding TotalText}" Foreground="White" FontWeight="Bold" />
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12">
+            <Button Content="Zavřít" IsCancel="True" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Exportovat PDF" IsDefault="True" Padding="12,6" Click="Export_OnClick" />
+        </StackPanel>
+    </Grid>
+</Window>

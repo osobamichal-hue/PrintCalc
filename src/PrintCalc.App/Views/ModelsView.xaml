@@ -1,0 +1,80 @@
+<UserControl x:Class="PrintCalc.App.Views.ModelsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#F4F8FF" BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
+            <TextBlock Text="Modely (STL/3MF/GCode)" FontSize="18" FontWeight="SemiBold" />
+        </Border>
+
+        <Border Grid.Row="1" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,8">
+        <WrapPanel Margin="0">
+            <TextBlock Text="Hledat:" VerticalAlignment="Center" Margin="0,0,6,0" Style="{StaticResource FieldLabelStyle}" />
+            <TextBox Width="180" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" />
+            <TextBlock Text="Zákazník kalkulace:" VerticalAlignment="Center" Margin="0,0,6,0" Style="{StaticResource FieldLabelStyle}" />
+            <ComboBox Width="220"
+                      ItemsSource="{Binding Customers}"
+                      DisplayMemberPath="Name"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding SelectedCustomerId}"
+                      Margin="0,0,8,0" />
+        </WrapPanel>
+        </Border>
+
+        <Border Grid.Row="2" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+        <WrapPanel Margin="0">
+            <Button Content="Import STL/3MF/GCode" Command="{Binding ImportCommand}" Margin="0,0,8,0" Padding="12,6" />
+            <Button Content="Otevřít model" Command="{Binding OpenSelectedModelCommand}" Margin="0,0,8,0" Padding="12,6" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Content="Export modelu" Command="{Binding ExportSelectedModelCommand}" Margin="0,0,8,0" Padding="12,6" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Content="Vytvořit kalkulaci z modelu" Command="{Binding CreateCalculationFromModelCommand}" Margin="0,0,8,0" Padding="12,6" />
+            <Button Content="Uložit" Command="{Binding SaveCommand}" Margin="0,0,8,0" Padding="12,6" />
+            <Button Content="Smazat" Command="{Binding DeleteCommand}" Margin="0,0,8,0" Padding="12,6" Style="{StaticResource DangerButtonStyle}" />
+            <Button Content="Obnovit" Command="{Binding RefreshCommand}" Padding="12,6" Style="{StaticResource SecondaryButtonStyle}" />
+        </WrapPanel>
+        </Border>
+
+        <Border Grid.Row="3" Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="8">
+        <DataGrid ItemsSource="{Binding Items}"
+                  SelectedItem="{Binding SelectedModel}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  IsReadOnly="True"
+                  MouseDoubleClick="ModelsGrid_OnMouseDoubleClick">
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Import modelu" Command="{Binding ImportCommand}" />
+                    <MenuItem Header="Editovat metadata" Click="EditModel_OnClick" />
+                    <MenuItem Header="Otevřít model" Command="{Binding OpenSelectedModelCommand}" />
+                    <MenuItem Header="Export modelu" Command="{Binding ExportSelectedModelCommand}" />
+                    <MenuItem Header="Vytvořit kalkulaci z modelu" Command="{Binding CreateCalculationFromModelCommand}" />
+                    <MenuItem Header="Uložit změny" Command="{Binding SaveCommand}" />
+                    <MenuItem Header="Smazat model" Command="{Binding DeleteCommand}" />
+                    <MenuItem Header="Obnovit" Command="{Binding RefreshCommand}" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Název" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
+                <DataGridTextColumn Header="Typ" Binding="{Binding FileType}" Width="80" />
+                <DataGridTextColumn Header="Soubor" Binding="{Binding OriginalFileName}" Width="2*" />
+                <DataGridTextColumn Header="Zdrojová cesta" Binding="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" Width="3*" />
+                <DataGridTextColumn Header="g" Binding="{Binding EstimatedMaterialGrams, StringFormat=F2}" Width="80" />
+                <DataGridTextColumn Header="h" Binding="{Binding EstimatedPrintHours, StringFormat=F2}" Width="80" />
+                <DataGridTextColumn Header="Poznámka" Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
+                <DataGridTextColumn Header="Vytvořeno" Binding="{Binding CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="130" />
+            </DataGrid.Columns>
+        </DataGrid>
+        </Border>
+        <materialDesign:Snackbar Grid.Row="4"
+                                 Margin="0,8,0,0"
+                                 Message="{Binding StatusMessage}"
+                                 IsActive="{Binding StatusMessage, Converter={StaticResource StringNotEmptyToBoolConverter}}" />
+    </Grid>
+</UserControl>

@@ -1,0 +1,64 @@
+<UserControl x:Class="PrintCalc.App.Views.HelpAboutView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Language="cs-CZ">
+    <Border Background="#FFFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="10">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="4">
+            <TextBlock Text="Nápověda a o aplikaci" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+            <Border Background="#FAFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="8" Margin="0,0,0,10">
+            <GroupBox Header="Popis aplikace" Margin="0" Padding="10">
+                <TextBlock TextWrapping="Wrap">
+                    PrintCalc je aplikace pro řízení 3D tisku: evidenci zákazníků, filamentů a skladu,
+                    tvorbu kalkulací, nabídek, zakázek a faktur včetně exportů do PDF/CSV.
+                </TextBlock>
+            </GroupBox>
+            </Border>
+
+            <Border Background="#FAFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="8" Margin="0,0,0,10">
+            <GroupBox Header="Rychlá nápověda" Margin="0" Padding="10">
+                <StackPanel>
+                    <TextBlock Text="1) Nejprve nastavte firemní údaje a finance v modulu Nastavení." Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Text="2) Vytvořte skladové karty filamentů a naskladněte materiál." Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Text="3) V Kalkulacích spočítejte cenu tisku a uložte kalkulaci." Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Text="4) Z kalkulace vytvořte nabídku, ze nabídky zakázku a ze zakázky fakturu." Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Text="5) Pravidelně používejte zálohování v Nastavení -> Aplikace." TextWrapping="Wrap" />
+                    <Button Content="Otevřít dokumentaci (README)"
+                            Command="{Binding OpenDocumentationCommand}"
+                            Width="250"
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </GroupBox>
+            </Border>
+
+            <Border Background="#FAFFFFFF" BorderBrush="#E2E7F6" BorderThickness="1" CornerRadius="12" Padding="8">
+            <GroupBox Header="O aplikaci" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Název:" FontWeight="SemiBold" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AppName}" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Verze:" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Version}" Margin="0,6,0,0" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text=".NET runtime:" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Runtime}" Margin="0,6,0,0" />
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Operační systém:" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Os}" Margin="0,6,0,0" />
+                </Grid>
+            </GroupBox>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+    </Border>
+</UserControl>

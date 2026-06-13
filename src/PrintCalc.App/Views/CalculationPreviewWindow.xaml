@@ -1,0 +1,45 @@
+<Window x:Class="PrintCalc.App.Views.CalculationPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Náhled kalkulace"
+        WindowStartupLocation="CenterOwner"
+        Width="760"
+        Height="560">
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock Text="{Binding HeaderText}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding DateText}" />
+        </StackPanel>
+
+        <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding PiecesSummaryText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding PrintDurationText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding MaterialText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding PrintText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding EnergyText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding ModelDesignText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding StartFeeText}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding SubtotalText}" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock Text="{Binding TotalText}" FontSize="16" FontWeight="Bold" />
+            </StackPanel>
+            <Border Grid.Column="1" BorderBrush="#33000000" BorderThickness="1" CornerRadius="4" Padding="8">
+                <StackPanel>
+                    <TextBlock Text="Režim" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ModeText}" Margin="0,0,0,8" />
+                    <TextBlock Text="Model" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ModelText}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Zavřít" IsCancel="True" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Exportovat PDF" IsDefault="True" Padding="12,6" Click="Export_OnClick" />
+        </StackPanel>
+    </DockPanel>
+</Window>

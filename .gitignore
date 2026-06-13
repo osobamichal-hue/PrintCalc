@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Next.js
+web/.next/
+web/out/
+web/build/
+*.tsbuildinfo
+web/next-env.d.ts
+
+# .NET
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# build / publish
+artifacts/
+publish/
+
+# env & secrets
+.env
+.env*.local
+*.pem
+
+# logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# misc
+.vercel
+coverage/
+@p0
