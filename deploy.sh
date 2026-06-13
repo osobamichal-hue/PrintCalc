@@ -59,10 +59,29 @@ wait_for_url() {
       ok "$label odpovídá ($url)"
       return 0
     fi
+    if (( elapsed > 0 && elapsed % 10 == 0 )); then
+      log "Stále čekám na $label… (${elapsed}s / ${timeout}s)"
+    fi
     sleep 2
     elapsed=$((elapsed + 2))
   done
-  fail "$label neodpovídá do ${timeout}s ($url)"
+  fail "$label neodpovídá do ${timeout}s ($url) — zkuste: pm2 logs printcalc-api"
+}
+
+pm2_start_fresh() {
+  log "PM2 — čisté spuštění (API → web)…"
+  pm2 delete printcalc printcalc-api printcalc-web 2>/dev/null || true
+  pm2 start ecosystem.config.cjs --only printcalc-api
+  wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
+  pm2 start ecosystem.config.cjs --only printcalc-web
+}
+
+pm2_restart_services() {
+  log "Restart API…"
+  pm2 restart printcalc-api
+  wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
+  log "Restart webu…"
+  pm2 restart printcalc-web
 }
 
 require_cmd git
@@ -109,15 +128,13 @@ fi
 
 # --- PM2 ---
 if [[ "$PM2_SETUP" -eq 1 ]] || ! pm2 describe printcalc-api >/dev/null 2>&1; then
-  log "První spuštění PM2 (ecosystem.config.cjs)…"
-  pm2 delete printcalc printcalc-api printcalc-web 2>/dev/null || true
-  pm2 start ecosystem.config.cjs
-else
-  log "Restart API…"
-  pm2 restart printcalc-api
+  pm2_start_fresh
+elif ! pm2 describe printcalc-web >/dev/null 2>&1; then
+  log "PM2 — chybí web, doplňuji…"
   wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
-  log "Restart webu…"
-  pm2 restart printcalc-web
+  pm2 start ecosystem.config.cjs --only printcalc-web
+else
+  pm2_restart_services
 fi
 
 pm2 save
