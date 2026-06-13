@@ -66,6 +66,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
@@ -114,7 +115,11 @@
                                     <TextBlock Text="Poznámky ke kartě" />
                                     <TextBox Text="{Binding NewNotes, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
-                                <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,8,8,0">
+                                    <TextBlock Text="Min. zásoba (kg)" />
+                                    <TextBox Text="{Binding NewMinStockKg, Converter={StaticResource DecimalFieldConverter}, UpdateSourceTrigger=LostFocus}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="3" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
                                     <Button Content="{Binding SaveTypeButtonText}" Command="{Binding SaveTypeFromFormCommand}" Padding="12,6" Margin="0,0,8,0" />
                                     <Button Content="Vyčistit" Command="{Binding ClearTypeFormCommand}" Padding="12,6" Style="{StaticResource SecondaryButtonStyle}" />
                                 </StackPanel>
@@ -155,6 +160,7 @@
                                 <DataGridTextColumn Header="Bed max °C" Binding="{Binding BedTempMaxC, UpdateSourceTrigger=PropertyChanged}" Width="85" />
                                 <DataGridTextColumn Header="Poznámka" Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
                                 <DataGridTextColumn Header="Prům. Kč/kg" Binding="{Binding AveragePricePerKg, StringFormat=F2}" Width="100" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Min. kg" Binding="{Binding MinStockKg, StringFormat=F3}" Width="80" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Border>

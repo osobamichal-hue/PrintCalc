@@ -1,4 +1,5 @@
 ﻿import { ApiStatus } from "@/components/ApiStatus";
+import { StockAlertsPanel } from "@/components/StockAlertsPanel";
 import Link from "next/link";
 
 const modules = [
@@ -31,6 +32,8 @@ export default function Home() {
       </div>
 
       <ApiStatus />
+
+      <StockAlertsPanel />
 
       <div className="grid gap-3 sm:grid-cols-2">
         {modules.map((m) => (

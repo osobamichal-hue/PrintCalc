@@ -15,6 +15,7 @@ public class GcodeReader : IGcodeReader
         decimal maxElapsedSec = 0m;
         decimal? lastRemainingMin = null;
         decimal? maxRemainingMin = null;
+        var isCreality = false;
 
         try
         {
@@ -22,12 +23,20 @@ public class GcodeReader : IGcodeReader
             {
                 var line = raw.Trim();
                 if (line.Length == 0) continue;
-                if (!line.StartsWith(";")) continue;
+                if (!line.StartsWith(';')) continue;
 
-                // Common slicer hints: ;TIME:9180
-                var timeMatch = Regex.Match(line, @"^;TIME:(\d+)$", RegexOptions.IgnoreCase);
-                if (timeMatch.Success && decimal.TryParse(timeMatch.Groups[1].Value, out var sec))
+                if (line.Contains("Creality Print", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("CXEngine", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("CRSLICE", StringComparison.OrdinalIgnoreCase))
+                    isCreality = true;
+
+                // Cura / Creality Print: ;TIME:3708.97 (sekundy, desetinné)
+                var timeMatch = Regex.Match(line, @"^;TIME:([\d.,]+)$", RegexOptions.IgnoreCase);
+                if (timeMatch.Success &&
+                    decimal.TryParse(timeMatch.Groups[1].Value.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var sec))
+                {
                     hours ??= sec / 3600m;
+                }
 
                 var elapsedMatch = Regex.Match(line, @"^;TIME_ELAPSED:(\d+[.,]?\d*)$", RegexOptions.IgnoreCase);
                 if (elapsedMatch.Success &&
@@ -53,7 +62,15 @@ public class GcodeReader : IGcodeReader
                         hours ??= h;
                 }
 
-                // e.g. "; Filament used: 32.71m, 98.34g"
+                // Creality Print: ;Filament Weight:25.581177 (gramy)
+                var crealityWeight = Regex.Match(line, @"^;\s*Filament\s+Weight\s*:\s*([\d.,]+)\s*$", RegexOptions.IgnoreCase);
+                if (crealityWeight.Success &&
+                    decimal.TryParse(crealityWeight.Groups[1].Value.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var cwg))
+                {
+                    grams ??= cwg;
+                }
+
+                // e.g. "; Filament used: 32.71m, 98.34g" nebo Creality ";Filament used:8.57695m" (jen délka)
                 if (line.Contains("filament", StringComparison.OrdinalIgnoreCase) ||
                     line.Contains("material", StringComparison.OrdinalIgnoreCase))
                 {
@@ -71,6 +88,14 @@ public class GcodeReader : IGcodeReader
                         grams ??= kg * 1000m;
                     }
                 }
+
+                // Creality: ;Layer height:0.1 nebo ;Layer Height:0.2
+                if (line.Contains("layer height", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("layer_height", StringComparison.OrdinalIgnoreCase))
+                {
+                    var lh = Regex.Match(line, @":\s*([\d.,]+)", RegexOptions.IgnoreCase);
+                    if (lh.Success) { /* informativní — volitelně do LayerHeightNote */ }
+                }
             }
         }
         catch (Exception ex)
@@ -85,6 +110,9 @@ public class GcodeReader : IGcodeReader
             else if (maxRemainingMin is { } remStart)
                 hours = remStart / 60m;
         }
+
+        if (isCreality && grams is null)
+            warnings.Add("Creality Print GCode — hmotnost nenalezena (hledejte řádek ;Filament Weight:). Doplňte ručně.");
 
         if (grams is null && hours is null)
             warnings.Add("V GCode nebyly nalezeny metadata času/hmotnosti. Zadejte ručně.");

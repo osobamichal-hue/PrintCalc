@@ -14,6 +14,8 @@ public class FilamentType
     public int? BedTempMaxC { get; set; }
     /// <summary>Vážený průměr z aktuálních zásob (Kč/kg).</summary>
     public decimal AveragePricePerKg { get; set; }
+    /// <summary>Minimální zásoba (kg) — pod touto hranicí se zobrazí upozornění.</summary>
+    public decimal MinStockKg { get; set; }
     public string? Notes { get; set; }
 
     public ICollection<FilamentStock> Stocks { get; set; } = new List<FilamentStock>();

@@ -22,6 +22,7 @@ public partial class CalculationViewModel : ObservableObject
     private readonly ICalculationEngine _engine;
     private readonly IThreeMfReader _threeMf;
     private readonly IGcodeReader _gcode;
+    private readonly IModelMetadataResolver _metadataResolver;
     private readonly IStockService _stock;
     private readonly IDocumentNumberService _numbers;
     private readonly ICalculationPdfService _calculationPdf;
@@ -56,6 +57,10 @@ public partial class CalculationViewModel : ObservableObject
     /// <summary>Materiál dodá zákazník — cena materiálu 0 Kč, poznámka v nabídce a faktuře.</summary>
     [ObservableProperty] private bool customerSuppliedMaterial;
     [ObservableProperty] private decimal marginPercent = 15;
+    [ObservableProperty] private decimal slicingFeePerModel = 100;
+    [ObservableProperty] private decimal postProcessingHours;
+    [ObservableProperty] private decimal postProcessingHourlyRate = 350;
+    [ObservableProperty] private decimal wasteCoefficientPercent;
     [ObservableProperty] private decimal filamentPricePerKg;
     [ObservableProperty] private string calculationTitle = "Kalkulace";
     /// <summary>Volitelný popis řádku tisku při převodu do nabídky (prázdné = „název - 3D tisk“).</summary>
@@ -70,6 +75,11 @@ public partial class CalculationViewModel : ObservableObject
     [ObservableProperty] private decimal resultEnergy;
     [ObservableProperty] private decimal resultModelDesign;
     [ObservableProperty] private decimal resultStartFee;
+    [ObservableProperty] private decimal resultSlicingFee;
+    [ObservableProperty] private decimal resultPostProcessing;
+    [ObservableProperty] private decimal resultQuantityDiscount;
+    [ObservableProperty] private decimal resultQuantityDiscountPercent;
+    [ObservableProperty] private decimal resultDiscountedSubtotal;
     [ObservableProperty] private decimal resultSubtotal;
     [ObservableProperty] private decimal resultTotal;
     [ObservableProperty] private int resultPrintRuns;
@@ -98,6 +108,7 @@ public partial class CalculationViewModel : ObservableObject
         ICalculationEngine engine,
         IThreeMfReader threeMf,
         IGcodeReader gcode,
+        IModelMetadataResolver metadataResolver,
         IStockService stock,
         IDocumentNumberService numbers,
         ICalculationPdfService calculationPdf)
@@ -106,6 +117,7 @@ public partial class CalculationViewModel : ObservableObject
         _engine = engine;
         _threeMf = threeMf;
         _gcode = gcode;
+        _metadataResolver = metadataResolver;
         _stock = stock;
         _numbers = numbers;
         _calculationPdf = calculationPdf;
@@ -131,6 +143,8 @@ public partial class CalculationViewModel : ObservableObject
             Models.Add(m);
 
         ModelingHourlyRate = await GetModelingHourlyRateAsync();
+        SlicingFeePerModel = await GetDecimalSettingAsync("Calculation.DefaultSlicingFeePerModel", 100m);
+        PostProcessingHourlyRate = await GetDecimalSettingAsync("Calculation.PostProcessingHourlyRate", 350m);
         await LoadCalculationsAsync();
         RefreshQuotePrintLinePreview();
     }
@@ -153,13 +167,15 @@ public partial class CalculationViewModel : ObservableObject
     {
         SelectedModelId = null;
         ModelPathDisplay = path;
-        ThreeMfMetadata meta;
-        var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
-        if (ext == ".gcode" || ext == ".gco")
-            meta = _gcode.ReadMetadata(path);
-        else
-            meta = _threeMf.ReadMetadata(path);
 
+        decimal density = 1.24m;
+        if (SelectedFilamentTypeId is { } fid)
+        {
+            var ft = Filaments.FirstOrDefault(f => f.Id == fid);
+            if (ft is { DensityGPerCm3: > 0 }) density = ft.DensityGPerCm3;
+        }
+
+        var meta = _metadataResolver.Resolve(path, density);
         ThreeMfWarnings = meta.Warnings.Count == 0 ? "" : string.Join("\n", meta.Warnings);
         if (meta.MaterialGrams is { } g) MaterialGrams = g;
         if (meta.PrintHours is { } h) SetDurationFromHours(h);
@@ -341,7 +357,7 @@ public partial class CalculationViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void StartNewCalculation()
+    private async Task StartNewCalculationAsync()
     {
         SelectedCalculation = null;
         CustomerSuppliedMaterial = false;
@@ -351,6 +367,9 @@ public partial class CalculationViewModel : ObservableObject
         ResultEnergyBreakdown = "";
         ResultStartFeeBreakdown = "";
         ResultUnitBreakdown = "";
+        SlicingFeePerModel = await GetDecimalSettingAsync("Calculation.DefaultSlicingFeePerModel", 100m);
+        PostProcessingHours = 0;
+        WasteCoefficientPercent = 0;
         StatusMessage = "Nová kalkulace: vyplňte kroky průvodce.";
         WizardStepIndex = 0;
     }
@@ -359,6 +378,8 @@ public partial class CalculationViewModel : ObservableObject
     private async Task ComputeAsync()
     {
         var electricity = await GetElectricityPriceAsync();
+        var tiersRaw = await GetStringSettingAsync("Calculation.QuantityDiscountTiers", "1:0;5:5;20:12");
+        var tiers = QuantityDiscountHelper.ParseTiers(tiersRaw);
         var printer = SelectedPrinterId is { } pid
             ? await _db.Printers.AsNoTracking().FirstOrDefaultAsync(p => p.Id == pid)
             : null;
@@ -377,7 +398,12 @@ public partial class CalculationViewModel : ObservableObject
             StartFeePerPrint = printer?.StartFeePerPrint ?? 0,
             ElectricityPricePerKwh = electricity,
             MarginPercent = MarginPercent,
-            CustomerSuppliedMaterial = CustomerSuppliedMaterial
+            CustomerSuppliedMaterial = CustomerSuppliedMaterial,
+            SlicingFeePerModel = SlicingFeePerModel,
+            PostProcessingHours = PostProcessingHours,
+            PostProcessingHourlyRate = PostProcessingHourlyRate,
+            WasteCoefficientPercent = WasteCoefficientPercent,
+            QuantityDiscountTiers = tiers
         };
 
         var q = _engine.Compute(input);
@@ -386,7 +412,12 @@ public partial class CalculationViewModel : ObservableObject
         ResultEnergy = q.EnergyCost;
         ResultModelDesign = q.ModelDesignCost;
         ResultStartFee = q.StartFeeCost;
+        ResultSlicingFee = q.SlicingFeeCost;
+        ResultPostProcessing = q.PostProcessingCost;
+        ResultQuantityDiscount = q.QuantityDiscountAmount;
+        ResultQuantityDiscountPercent = q.QuantityDiscountPercent;
         ResultSubtotal = q.Subtotal;
+        ResultDiscountedSubtotal = q.DiscountedSubtotal;
         ResultTotal = q.TotalWithMargin;
         ResultPrintRuns = q.PrintRuns;
         ResultUnitPrice = q.UnitPriceForRequestedPiece;
@@ -452,12 +483,21 @@ public partial class CalculationViewModel : ObservableObject
             ModelDesignHourlyRate = ModelingHourlyRate,
             MarginPercent = MarginPercent,
             ElectricityPricePerKwh = await GetElectricityPriceAsync(),
+            SlicingFeePerModel = SlicingFeePerModel,
+            PostProcessingHours = PostProcessingHours,
+            PostProcessingHourlyRate = PostProcessingHourlyRate,
+            WasteCoefficientPercent = WasteCoefficientPercent,
             MaterialCost = ResultMaterial,
             PrintCost = ResultPrint,
             EnergyCost = ResultEnergy,
             ModelDesignCost = ResultModelDesign,
             StartFeeCost = ResultStartFee,
+            SlicingFeeCost = ResultSlicingFee,
+            PostProcessingCost = ResultPostProcessing,
+            QuantityDiscountPercent = ResultQuantityDiscountPercent,
+            QuantityDiscountAmount = ResultQuantityDiscount,
             Subtotal = ResultSubtotal,
+            DiscountedSubtotal = ResultDiscountedSubtotal,
             TotalWithMargin = ResultTotal,
             UnitPrice = ResultUnitPrice,
             Title = string.IsNullOrWhiteSpace(CalculationTitle) ? "Kalkulace" : CalculationTitle.Trim(),
@@ -516,13 +556,22 @@ public partial class CalculationViewModel : ObservableObject
             SetModelDesignDurationFromHours(calc.ModelDesignHours);
             ModelingHourlyRate = calc.ModelDesignHourlyRate;
             MarginPercent = calc.MarginPercent;
+            SlicingFeePerModel = calc.SlicingFeePerModel;
+            PostProcessingHours = calc.PostProcessingHours;
+            PostProcessingHourlyRate = calc.PostProcessingHourlyRate;
+            WasteCoefficientPercent = calc.WasteCoefficientPercent;
 
             ResultMaterial = calc.MaterialCost;
             ResultPrint = calc.PrintCost;
             ResultEnergy = calc.EnergyCost;
             ResultModelDesign = calc.ModelDesignCost;
             ResultStartFee = calc.StartFeeCost;
+            ResultSlicingFee = calc.SlicingFeeCost;
+            ResultPostProcessing = calc.PostProcessingCost;
+            ResultQuantityDiscount = calc.QuantityDiscountAmount;
+            ResultQuantityDiscountPercent = calc.QuantityDiscountPercent;
             ResultSubtotal = calc.Subtotal;
+            ResultDiscountedSubtotal = calc.DiscountedSubtotal;
             ResultTotal = calc.TotalWithMargin;
             ResultPrintRuns = calc.PrintRuns <= 0 ? 1 : calc.PrintRuns;
             ResultUnitPrice = calc.UnitPrice <= 0 && RequiredPieces > 0
@@ -597,12 +646,21 @@ public partial class CalculationViewModel : ObservableObject
         tracked.ModelDesignHourlyRate = ModelingHourlyRate;
         tracked.MarginPercent = MarginPercent;
         tracked.ElectricityPricePerKwh = await GetElectricityPriceAsync();
+        tracked.SlicingFeePerModel = SlicingFeePerModel;
+        tracked.PostProcessingHours = PostProcessingHours;
+        tracked.PostProcessingHourlyRate = PostProcessingHourlyRate;
+        tracked.WasteCoefficientPercent = WasteCoefficientPercent;
         tracked.MaterialCost = ResultMaterial;
         tracked.PrintCost = ResultPrint;
         tracked.EnergyCost = ResultEnergy;
         tracked.ModelDesignCost = ResultModelDesign;
         tracked.StartFeeCost = ResultStartFee;
+        tracked.SlicingFeeCost = ResultSlicingFee;
+        tracked.PostProcessingCost = ResultPostProcessing;
+        tracked.QuantityDiscountPercent = ResultQuantityDiscountPercent;
+        tracked.QuantityDiscountAmount = ResultQuantityDiscount;
         tracked.Subtotal = ResultSubtotal;
+        tracked.DiscountedSubtotal = ResultDiscountedSubtotal;
         tracked.TotalWithMargin = ResultTotal;
         tracked.UnitPrice = ResultUnitPrice;
         tracked.Title = string.IsNullOrWhiteSpace(CalculationTitle) ? "Kalkulace" : CalculationTitle.Trim();
@@ -736,6 +794,20 @@ public partial class CalculationViewModel : ObservableObject
         AppDialog.ShowInfo($"PDF uloženo:\n{path}", "Náhled kalkulace");
     }
 
+    private async Task<decimal> GetDecimalSettingAsync(string key, decimal fallback)
+    {
+        var row = await _db.AppSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == key);
+        return row is not null && decimal.TryParse(row.Value.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : fallback;
+    }
+
+    private async Task<string> GetStringSettingAsync(string key, string fallback)
+    {
+        var row = await _db.AppSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == key);
+        return string.IsNullOrWhiteSpace(row?.Value) ? fallback : row!.Value;
+    }
+
     private async Task<decimal> GetElectricityPriceAsync()
     {
         var row = await _db.AppSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == "ElectricityPricePerKwh");
@@ -789,9 +861,12 @@ public partial class CalculationViewModel : ObservableObject
         }
 
         if (SelectedFilamentTypeId is not { } id) return;
-        var kg = MaterialGrams / 1000m;
+        var wasteMul = 1m + Math.Max(0, WasteCoefficientPercent) / 100m;
+        var printRuns = Math.Max(1, ResultPrintRuns);
+        var kg = MaterialGrams / 1000m * printRuns * wasteMul;
         if (kg <= 0) return;
-        await _stock.IssueAsync(id, kg, "Výdej z kalkulace");
+        var calcId = SelectedCalculation?.Id;
+        await _stock.IssueAsync(id, kg, calcId is { } cid ? $"Výdej z kalkulace #{cid}" : "Výdej z kalkulace", calcId);
         await LoadAsync();
         ApplyFilamentTypeId(id);
         StatusMessage = "Materiál byl vydán ze skladu.";
@@ -868,12 +943,21 @@ public partial class CalculationViewModel : ObservableObject
             ModelDesignHourlyRate = ModelingHourlyRate,
             MarginPercent = MarginPercent,
             ElectricityPricePerKwh = await GetElectricityPriceAsync(),
+            SlicingFeePerModel = SlicingFeePerModel,
+            PostProcessingHours = PostProcessingHours,
+            PostProcessingHourlyRate = PostProcessingHourlyRate,
+            WasteCoefficientPercent = WasteCoefficientPercent,
             MaterialCost = ResultMaterial,
             PrintCost = ResultPrint,
             EnergyCost = ResultEnergy,
             ModelDesignCost = ResultModelDesign,
             StartFeeCost = ResultStartFee,
+            SlicingFeeCost = ResultSlicingFee,
+            PostProcessingCost = ResultPostProcessing,
+            QuantityDiscountPercent = ResultQuantityDiscountPercent,
+            QuantityDiscountAmount = ResultQuantityDiscount,
             Subtotal = ResultSubtotal,
+            DiscountedSubtotal = ResultDiscountedSubtotal,
             TotalWithMargin = ResultTotal,
             UnitPrice = ResultUnitPrice,
             Title = string.IsNullOrWhiteSpace(CalculationTitle) ? "Kalkulace" : CalculationTitle.Trim(),
@@ -909,6 +993,16 @@ public partial class CalculationViewModel : ObservableObject
         if (ManualPriceEditingEnabled) RecalculateManualResults();
     }
 
+    partial void OnResultSlicingFeeChanged(decimal value)
+    {
+        if (ManualPriceEditingEnabled) RecalculateManualResults();
+    }
+
+    partial void OnResultPostProcessingChanged(decimal value)
+    {
+        if (ManualPriceEditingEnabled) RecalculateManualResults();
+    }
+
     partial void OnMarginPercentChanged(decimal value)
     {
         if (ManualPriceEditingEnabled) RecalculateManualResults();
@@ -933,9 +1027,13 @@ public partial class CalculationViewModel : ObservableObject
         ResultEnergy = RoundMoney(ResultEnergy);
         ResultModelDesign = RoundMoney(ResultModelDesign);
         ResultStartFee = RoundMoney(ResultStartFee);
+        ResultSlicingFee = RoundMoney(ResultSlicingFee);
+        ResultPostProcessing = RoundMoney(ResultPostProcessing);
 
-        ResultSubtotal = RoundMoney(ResultMaterial + ResultPrint + ResultEnergy + ResultModelDesign + ResultStartFee);
-        ResultTotal = RoundMoney(ResultSubtotal * (1m + MarginPercent / 100m));
+        ResultSubtotal = RoundMoney(ResultMaterial + ResultPrint + ResultEnergy + ResultModelDesign + ResultStartFee + ResultSlicingFee + ResultPostProcessing);
+        ResultQuantityDiscount = RoundMoney(ResultSubtotal * (ResultQuantityDiscountPercent / 100m));
+        ResultDiscountedSubtotal = RoundMoney(ResultSubtotal - ResultQuantityDiscount);
+        ResultTotal = RoundMoney(ResultDiscountedSubtotal * (1m + MarginPercent / 100m));
         var pieces = Math.Max(1, RequiredPieces);
         ResultUnitPrice = RoundMoney(ResultTotal / pieces);
         ResultUnitBreakdown = $"= {ResultTotal:0} Kč vč. marže ÷ {pieces} ks (požadovaný počet)";

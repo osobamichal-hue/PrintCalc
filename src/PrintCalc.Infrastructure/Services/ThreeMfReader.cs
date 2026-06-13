@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text.Json;
 using System.Xml.Linq;
 using PrintCalc.Core.Models;
 using PrintCalc.Core.Services;
@@ -8,6 +9,9 @@ namespace PrintCalc.Infrastructure.Services;
 public class ThreeMfReader : IThreeMfReader
 {
     private static readonly XNamespace DcNs = "http://purl.org/dc/elements/1.1/";
+    private readonly IGcodeReader _gcode;
+
+    public ThreeMfReader(IGcodeReader gcode) => _gcode = gcode;
 
     public ThreeMfMetadata ReadMetadata(string filePath)
     {
@@ -22,24 +26,59 @@ public class ThreeMfReader : IThreeMfReader
             using var zip = ZipFile.OpenRead(filePath);
             foreach (var entry in zip.Entries)
             {
-                if (!entry.Name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) &&
-                    !entry.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                if (entry.Length == 0) continue;
+                var name = entry.FullName.Replace('\\', '/');
 
-                using var stream = entry.Open();
-                var doc = XDocument.Load(stream);
-                var root = doc.Root;
-                if (root is null) continue;
-
-                TryParseProductionStack(doc, ref grams, ref hours, warnings);
-                ScanForNumericHints(root, ref grams, ref hours, ref layerNote, ref supportNote, warnings);
-
-                if (entry.FullName.Contains("Metadata", StringComparison.OrdinalIgnoreCase) &&
-                    root.Name.LocalName.Equals("coreProperties", StringComparison.OrdinalIgnoreCase))
+                if (IsEmbeddedGcode(name))
                 {
-                    var desc = root.Element(DcNs + "description")?.Value;
-                    if (!string.IsNullOrWhiteSpace(desc))
-                        TryParseDescription(desc!, ref grams, ref hours);
+                    MergeFromGcode(entry, ref grams, ref hours, warnings);
+                    continue;
+                }
+
+                if (!IsMetadataEntry(name)) continue;
+
+                try
+                {
+                    using var stream = entry.Open();
+                    using var reader = new StreamReader(stream);
+                    var text = reader.ReadToEnd();
+                    if (string.IsNullOrWhiteSpace(text)) continue;
+
+                    if (name.Contains("slice_info", StringComparison.OrdinalIgnoreCase) ||
+                        name.Contains("sliceinfo", StringComparison.OrdinalIgnoreCase))
+                    {
+                        TryParseSliceInfo(text, ref grams, ref hours, warnings);
+                        continue;
+                    }
+
+                    if (text.TrimStart().StartsWith('{'))
+                    {
+                        TryParseJsonMetadata(text, ref grams, ref hours);
+                        continue;
+                    }
+
+                    if (text.TrimStart().StartsWith('<'))
+                    {
+                        var doc = XDocument.Parse(text);
+                        var root = doc.Root;
+                        if (root is null) continue;
+
+                        TryParseProductionStack(doc, ref grams, ref hours, warnings);
+                        TryParseSliceInfoXml(doc, ref grams, ref hours);
+                        ScanForNumericHints(root, ref grams, ref hours, ref layerNote, ref supportNote, warnings);
+
+                        if (name.Contains("Metadata", StringComparison.OrdinalIgnoreCase) &&
+                            root.Name.LocalName.Equals("coreProperties", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var desc = root.Element(DcNs + "description")?.Value;
+                            if (!string.IsNullOrWhiteSpace(desc))
+                                TryParseDescription(desc!, ref grams, ref hours);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    warnings.Add($"3MF {entry.Name}: {ex.Message}");
                 }
             }
         }
@@ -47,9 +86,6 @@ public class ThreeMfReader : IThreeMfReader
         {
             warnings.Add($"Chyba čtení 3MF: {ex.Message}");
         }
-
-        if (grams is null && hours is null)
-            warnings.Add("V souboru nebyly spolehlivě nalezeny hmotnost ani čas – doplňte ručně.");
 
         return new ThreeMfMetadata
         {
@@ -61,6 +97,155 @@ public class ThreeMfReader : IThreeMfReader
         };
     }
 
+    private static bool IsEmbeddedGcode(string path) =>
+        path.Contains("Metadata/", StringComparison.OrdinalIgnoreCase) &&
+        (path.EndsWith(".gcode", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith(".gco", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsMetadataEntry(string path) =>
+        path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".config", StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".model", StringComparison.OrdinalIgnoreCase) ||
+        path.Contains("/Metadata/", StringComparison.OrdinalIgnoreCase);
+
+    private void MergeFromGcode(ZipArchiveEntry entry, ref decimal? grams, ref decimal? hours, List<string> warnings)
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "pc-3mf-gcode-" + Guid.NewGuid().ToString("N") + ".gcode");
+        try
+        {
+            entry.ExtractToFile(temp, overwrite: true);
+            var meta = _gcode.ReadMetadata(temp);
+            grams ??= meta.MaterialGrams;
+            hours ??= meta.PrintHours;
+            warnings.AddRange(meta.Warnings);
+        }
+        catch (Exception ex)
+        {
+            warnings.Add($"GCode v 3MF ({entry.Name}): {ex.Message}");
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch { /* ignore */ }
+        }
+    }
+
+    private static void TryParseSliceInfo(string text, ref decimal? grams, ref decimal? hours, List<string> warnings)
+    {
+        var trimmed = text.TrimStart();
+        if (trimmed.StartsWith('{'))
+        {
+            TryParseJsonMetadata(text, ref grams, ref hours);
+            return;
+        }
+
+        if (!trimmed.StartsWith('<')) return;
+
+        try
+        {
+            var doc = XDocument.Parse(text);
+            TryParseSliceInfoXml(doc, ref grams, ref hours);
+            string? unusedLayer = null;
+            string? unusedSupport = null;
+            ScanForNumericHints(doc.Root!, ref grams, ref hours, ref unusedLayer, ref unusedSupport, warnings);
+        }
+        catch (Exception ex)
+        {
+            warnings.Add($"slice_info: {ex.Message}");
+        }
+    }
+
+    private static void TryParseSliceInfoXml(XDocument doc, ref decimal? grams, ref decimal? hours)
+    {
+        foreach (var meta in doc.Descendants().Where(e => e.Name.LocalName.Equals("metadata", StringComparison.OrdinalIgnoreCase)))
+        {
+            var key = meta.Attribute("key")?.Value ?? meta.Attribute("name")?.Value;
+            var val = meta.Attribute("value")?.Value ?? meta.Value;
+            if (key is null || val is null) continue;
+            TryAssignSliceKey(key, val, ref grams, ref hours);
+        }
+
+        foreach (var header in doc.Descendants().Where(e => e.Name.LocalName.Equals("header_item", StringComparison.OrdinalIgnoreCase)))
+        {
+            var key = header.Attribute("key")?.Value;
+            var val = header.Attribute("value")?.Value;
+            if (key is null || val is null) continue;
+            TryAssignSliceKey(key, val, ref grams, ref hours);
+        }
+
+        decimal? sumG = null;
+        foreach (var filament in doc.Descendants().Where(e => e.Name.LocalName.Equals("filament", StringComparison.OrdinalIgnoreCase)))
+        {
+            var usedG = filament.Attribute("used_g")?.Value;
+            if (usedG is not null &&
+                decimal.TryParse(usedG.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var g))
+            {
+                sumG = (sumG ?? 0) + g;
+            }
+        }
+
+        if (sumG is > 0) grams ??= sumG;
+    }
+
+    private static void TryParseJsonMetadata(string json, ref decimal? grams, ref decimal? hours)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            WalkJson(doc.RootElement, ref grams, ref hours);
+        }
+        catch
+        {
+            /* not JSON */
+        }
+    }
+
+    private static void WalkJson(JsonElement el, ref decimal? grams, ref decimal? hours, string? keyHint = null)
+    {
+        switch (el.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var prop in el.EnumerateObject())
+                    WalkJson(prop.Value, ref grams, ref hours, prop.Name);
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in el.EnumerateArray())
+                    WalkJson(item, ref grams, ref hours, keyHint);
+                break;
+            case JsonValueKind.Number:
+                if (keyHint is not null && decimal.TryParse(el.GetRawText(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var n))
+                    TryAssignSliceKey(keyHint, n.ToString(System.Globalization.CultureInfo.InvariantCulture), ref grams, ref hours);
+                break;
+            case JsonValueKind.String:
+                if (keyHint is not null)
+                    TryAssignSliceKey(keyHint, el.GetString() ?? "", ref grams, ref hours);
+                break;
+        }
+    }
+
+    private static void TryAssignSliceKey(string name, string value, ref decimal? grams, ref decimal? hours)
+    {
+        var key = name.ToLowerInvariant().Trim();
+        var val = value.Trim();
+        if (val.Length == 0) return;
+
+        if (key is "weight" or "material_weight" or "filament_weight" or "total_weight" or "used_g")
+        {
+            if (decimal.TryParse(val.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var w))
+                grams ??= w;
+            return;
+        }
+
+        if (key is "prediction" or "print_time" or "estimated_time" or "time" or "duration")
+        {
+            if (decimal.TryParse(val.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sec))
+                hours ??= sec > 48 ? sec / 3600m : sec;
+            return;
+        }
+
+        TryAssign(name, value, ref grams, ref hours);
+    }
+
     private static void TryParseProductionStack(XDocument doc, ref decimal? grams, ref decimal? hours, List<string> warnings)
     {
         foreach (var elem in doc.Descendants().Where(e => e.Name.LocalName.Equals("metadatagroup", StringComparison.OrdinalIgnoreCase)))
@@ -69,7 +254,12 @@ public class ThreeMfReader : IThreeMfReader
             if (string.IsNullOrWhiteSpace(nameAttr)) continue;
             if (!nameAttr.Contains("slic", StringComparison.OrdinalIgnoreCase) &&
                 !nameAttr.Contains("cura", StringComparison.OrdinalIgnoreCase) &&
-                !nameAttr.Contains("prus", StringComparison.OrdinalIgnoreCase))
+                !nameAttr.Contains("prus", StringComparison.OrdinalIgnoreCase) &&
+                !nameAttr.Contains("creality", StringComparison.OrdinalIgnoreCase) &&
+                !nameAttr.Contains("cxengine", StringComparison.OrdinalIgnoreCase) &&
+                !nameAttr.Contains("crslice", StringComparison.OrdinalIgnoreCase) &&
+                !nameAttr.Contains("bambu", StringComparison.OrdinalIgnoreCase) &&
+                !nameAttr.Contains("orca", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             foreach (var prop in elem.Descendants().Where(e => e.Name.LocalName.Equals("metadataproperty", StringComparison.OrdinalIgnoreCase)))
@@ -113,8 +303,14 @@ public class ThreeMfReader : IThreeMfReader
             grams ??= gramsParsed;
         }
 
+        if (key is "weight" or "material_weight" or "filament_weight" or "total_weight")
+        {
+            if (decimal.TryParse(val.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var fw))
+                grams ??= fw;
+        }
+
         if (TryParseHoursFlexible(val, out var hoursParsed) &&
-            (key.Contains("duration") || key.Contains("time") || key.Contains("print") || key.Contains("estimated")))
+            (key.Contains("duration") || key.Contains("time") || key.Contains("print") || key.Contains("estimated") || key is "prediction"))
         {
             hours ??= hoursParsed;
         }
@@ -125,6 +321,8 @@ public class ThreeMfReader : IThreeMfReader
                 grams ??= num;
             if (key.Contains("weight") && key.Contains("kg"))
                 grams ??= num * 1000m;
+            if (key is "prediction" or "print_time" or "estimated_time")
+                hours ??= num > 48 ? num / 3600m : num;
             if (key.Contains("duration") || (key.Contains("time") && key.Contains("print")) || key == "estimated_time" || key.Contains("printing_time"))
                 hours ??= num > 48 ? num / 3600m : num;
         }
@@ -175,7 +373,7 @@ public class ThreeMfReader : IThreeMfReader
                 return true;
             }
         }
-        else if (lower.EndsWith("g"))
+        else if (lower.EndsWith('g') && !lower.EndsWith("kg"))
         {
             var n = lower[..^1];
             if (decimal.TryParse(n.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var g))
@@ -200,7 +398,6 @@ public class ThreeMfReader : IThreeMfReader
             return true;
         }
 
-        // format like 2h33m, 14m43s, 1h
         var h = 0m;
         var m = 0m;
         var s = 0m;

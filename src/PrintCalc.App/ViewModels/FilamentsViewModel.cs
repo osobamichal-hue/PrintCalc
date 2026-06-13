@@ -36,6 +36,7 @@ public partial class FilamentsViewModel : ObservableObject
     [ObservableProperty] private int? newBedTempMinC;
     [ObservableProperty] private int? newBedTempMaxC;
     [ObservableProperty] private string newNotes = "";
+    [ObservableProperty] private decimal newMinStockKg;
     [ObservableProperty] private int? editingTypeId;
     [ObservableProperty] private string statusMessage = "";
     [ObservableProperty] private decimal selectedTypeStockKg;
@@ -200,6 +201,7 @@ public partial class FilamentsViewModel : ObservableObject
         t.BedTempMinC = NewBedTempMinC;
         t.BedTempMaxC = NewBedTempMaxC;
         t.Notes = string.IsNullOrWhiteSpace(NewNotes) ? null : NewNotes.Trim();
+        t.MinStockKg = Math.Max(0, NewMinStockKg);
 
         await _db.SaveChangesAsync();
         await LoadTypesAsync();
@@ -225,6 +227,7 @@ public partial class FilamentsViewModel : ObservableObject
         NewBedTempMinC = SelectedType.BedTempMinC;
         NewBedTempMaxC = SelectedType.BedTempMaxC;
         NewNotes = SelectedType.Notes ?? "";
+        NewMinStockKg = SelectedType.MinStockKg;
         EditingTypeId = SelectedType.Id;
         StatusMessage = $"Editace typu: {SelectedType.Name}";
     }
@@ -414,6 +417,7 @@ public partial class FilamentsViewModel : ObservableObject
         NewBedTempMinC = null;
         NewBedTempMaxC = null;
         NewNotes = "";
+        NewMinStockKg = 0;
         EditingTypeId = null;
     }
 

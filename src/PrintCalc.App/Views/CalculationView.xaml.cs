@@ -83,8 +83,8 @@ public partial class CalculationView : UserControl
     {
         var dlg = new OpenFileDialog
         {
-            Title = "Vyberte model (3MF nebo GCode)",
-            Filter = "Modely (*.3mf;*.gcode;*.gco)|*.3mf;*.gcode;*.gco|3MF soubory (*.3mf)|*.3mf|GCode soubory (*.gcode;*.gco)|*.gcode;*.gco|Všechny soubory (*.*)|*.*"
+            Title = "Vyberte model (STL, OBJ, 3MF nebo GCode)",
+            Filter = "Modely (*.stl;*.obj;*.3mf;*.gcode;*.gco)|*.stl;*.obj;*.3mf;*.gcode;*.gco|STL (*.stl)|*.stl|OBJ (*.obj)|*.obj|3MF (*.3mf)|*.3mf|GCode (*.gcode;*.gco)|*.gcode;*.gco|Všechny soubory (*.*)|*.*"
         };
 
         if (dlg.ShowDialog() == true)
@@ -121,6 +121,8 @@ public partial class CalculationView : UserControl
         if (data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] files)
         {
             var model = files.FirstOrDefault(f =>
+                f.EndsWith(".stl", StringComparison.OrdinalIgnoreCase) ||
+                f.EndsWith(".obj", StringComparison.OrdinalIgnoreCase) ||
                 f.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) ||
                 f.EndsWith(".gcode", StringComparison.OrdinalIgnoreCase) ||
                 f.EndsWith(".gco", StringComparison.OrdinalIgnoreCase));
@@ -137,7 +139,9 @@ public partial class CalculationView : UserControl
             if (!string.IsNullOrWhiteSpace(text))
             {
                 var candidate = text.Trim().Trim('"');
-                if (candidate.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) ||
+                if (candidate.EndsWith(".stl", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.EndsWith(".obj", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) ||
                     candidate.EndsWith(".gcode", StringComparison.OrdinalIgnoreCase) ||
                     candidate.EndsWith(".gco", StringComparison.OrdinalIgnoreCase))
                 {
@@ -153,7 +157,9 @@ public partial class CalculationView : UserControl
             if (!string.IsNullOrWhiteSpace(text))
             {
                 var candidate = text.Trim().Trim('"');
-                if (candidate.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) ||
+                if (candidate.EndsWith(".stl", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.EndsWith(".obj", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) ||
                     candidate.EndsWith(".gcode", StringComparison.OrdinalIgnoreCase) ||
                     candidate.EndsWith(".gco", StringComparison.OrdinalIgnoreCase))
                 {

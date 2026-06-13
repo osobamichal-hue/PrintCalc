@@ -15,6 +15,12 @@ type FilamentType = {
   color: string | null;
   densityGPerCm3: number;
   averagePricePerKg: number;
+  minStockKg: number;
+  nozzleTempMinC: number | null;
+  nozzleTempMaxC: number | null;
+  bedTempMinC: number | null;
+  bedTempMaxC: number | null;
+  notes: string | null;
 };
 
 type Stock = {
@@ -25,6 +31,13 @@ type Stock = {
   pieceCount: number;
   receivedAt: string;
   lotNumber: string | null;
+  expirationDate: string | null;
+};
+
+type StockAlert = {
+  kind: string;
+  filamentTypeName: string;
+  message: string;
 };
 
 type Movement = {
@@ -36,12 +49,13 @@ type Movement = {
   note: string | null;
 };
 
-type ModalKind = "type" | "receive" | "issue" | null;
+type ModalKind = "type" | "editType" | "receive" | "issue" | null;
 
 export default function FilamentsPage() {
   const [types, setTypes] = useState<FilamentType[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
+  const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [tab, setTab] = useState<"types" | "stock" | "movements">("types");
   const [msg, setMsg] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
@@ -52,7 +66,15 @@ export default function FilamentsPage() {
     diameterMm: 1.75,
     color: "",
     densityGPerCm3: 1.24,
+    minStockKg: 0,
+    nozzleTempMinC: "" as string | number,
+    nozzleTempMaxC: "" as string | number,
+    bedTempMinC: "" as string | number,
+    bedTempMaxC: "" as string | number,
+    notes: "",
   });
+
+  const [editTypeId, setEditTypeId] = useState<number | null>(null);
 
   const [recv, setRecv] = useState({
     filamentTypeId: 0,
@@ -60,6 +82,9 @@ export default function FilamentsPage() {
     purchasePricePerKg: 400,
     supplier: "",
     pieceCount: 1,
+    lotNumber: "",
+    expirationDate: "",
+    notes: "",
   });
 
   const [issue, setIssue] = useState({
@@ -83,16 +108,25 @@ export default function FilamentsPage() {
     setMovements(await apiJson<Movement[]>("/api/stock-movements"));
   }, []);
 
+  const loadAlerts = useCallback(async () => {
+    try {
+      setAlerts(await apiJson<StockAlert[]>("/api/stock/alerts"));
+    } catch {
+      setAlerts([]);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     setMsg(null);
     try {
       await loadTypes();
       await loadStocks();
       await loadMovements();
+      await loadAlerts();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Chyba");
     }
-  }, [loadMovements, loadStocks, loadTypes]);
+  }, [loadAlerts, loadMovements, loadStocks, loadTypes]);
 
   useEffect(() => {
     void refresh();
@@ -103,26 +137,88 @@ export default function FilamentsPage() {
     setMsg(null);
   }
 
+  function typePayload() {
+    const parseOptInt = (v: string | number) => {
+      if (v === "" || v === null) return null;
+      const n = typeof v === "number" ? v : parseInt(String(v), 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      name: typeForm.name,
+      manufacturer: typeForm.manufacturer || null,
+      diameterMm: typeForm.diameterMm,
+      color: typeForm.color || null,
+      densityGPerCm3: typeForm.densityGPerCm3,
+      minStockKg: typeForm.minStockKg,
+      nozzleTempMinC: parseOptInt(typeForm.nozzleTempMinC),
+      nozzleTempMaxC: parseOptInt(typeForm.nozzleTempMaxC),
+      bedTempMinC: parseOptInt(typeForm.bedTempMinC),
+      bedTempMaxC: parseOptInt(typeForm.bedTempMaxC),
+      notes: typeForm.notes || null,
+    };
+  }
+
+  function resetTypeForm() {
+    setTypeForm({
+      name: "PLA",
+      manufacturer: "",
+      diameterMm: 1.75,
+      color: "",
+      densityGPerCm3: 1.24,
+      minStockKg: 0,
+      nozzleTempMinC: "",
+      nozzleTempMaxC: "",
+      bedTempMinC: "",
+      bedTempMaxC: "",
+      notes: "",
+    });
+    setEditTypeId(null);
+  }
+
+  function openEditType(t: FilamentType) {
+    setEditTypeId(t.id);
+    setTypeForm({
+      name: t.name,
+      manufacturer: t.manufacturer ?? "",
+      diameterMm: t.diameterMm,
+      color: t.color ?? "",
+      densityGPerCm3: t.densityGPerCm3,
+      minStockKg: t.minStockKg,
+      nozzleTempMinC: t.nozzleTempMinC ?? "",
+      nozzleTempMaxC: t.nozzleTempMaxC ?? "",
+      bedTempMinC: t.bedTempMinC ?? "",
+      bedTempMaxC: t.bedTempMaxC ?? "",
+      notes: t.notes ?? "",
+    });
+    setModal("editType");
+  }
+
   async function addType(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
     try {
       await apiJson("/api/filament-types", {
         method: "POST",
-        body: JSON.stringify({
-          name: typeForm.name,
-          manufacturer: typeForm.manufacturer || null,
-          diameterMm: typeForm.diameterMm,
-          color: typeForm.color || null,
-          densityGPerCm3: typeForm.densityGPerCm3,
-          nozzleTempMinC: null,
-          nozzleTempMaxC: null,
-          bedTempMinC: null,
-          bedTempMaxC: null,
-          notes: null,
-        }),
+        body: JSON.stringify(typePayload()),
       });
-      setTypeForm({ name: "PLA", manufacturer: "", diameterMm: 1.75, color: "", densityGPerCm3: 1.24 });
+      resetTypeForm();
+      closeModal();
+      await refresh();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Chyba");
+    }
+  }
+
+  async function saveType(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTypeId) return;
+    setMsg(null);
+    try {
+      await apiVoid(`/api/filament-types/${editTypeId}`, {
+        method: "PUT",
+        body: JSON.stringify(typePayload()),
+      });
+      resetTypeForm();
       closeModal();
       await refresh();
     } catch (err) {
@@ -152,11 +248,12 @@ export default function FilamentsPage() {
           purchasePricePerKg: recv.purchasePricePerKg,
           supplier: recv.supplier || null,
           pieceCount: recv.pieceCount,
-          lotNumber: null,
-          expirationDate: null,
-          notes: null,
+          lotNumber: recv.lotNumber || null,
+          expirationDate: recv.expirationDate ? new Date(recv.expirationDate).toISOString() : null,
+          notes: recv.notes || null,
         }),
       });
+      setRecv((r) => ({ ...r, lotNumber: "", expirationDate: "", notes: "" }));
       closeModal();
       await refresh();
     } catch (err) {
@@ -226,6 +323,16 @@ export default function FilamentsPage() {
       </PageHeader>
 
       {tabButtons}
+      {alerts.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="font-medium text-amber-700 dark:text-amber-400">Upozornění ({alerts.length})</div>
+          <ul className="mt-1 list-inside list-disc">
+            {alerts.slice(0, 6).map((a, i) => (
+              <li key={i}>{a.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {msg && !modal && <StatusBanner message={msg} />}
 
       {tab === "types" && (
@@ -236,13 +343,14 @@ export default function FilamentsPage() {
                 <th className="px-3 py-2">Typ</th>
                 <th className="px-3 py-2">Výrobce</th>
                 <th className="px-3 py-2">Kč/kg</th>
+                <th className="px-3 py-2">Min. kg</th>
                 <th />
               </tr>
             </thead>
             <tbody className={tableBody}>
               {types.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="px-3 py-8 text-center text-zinc-500">
                     Žádné typy.{" "}
                     <button type="button" className="text-amber-600 hover:underline dark:text-amber-400" onClick={() => setModal("type")}>
                       Přidat typ
@@ -255,7 +363,9 @@ export default function FilamentsPage() {
                     <td className="px-3 py-2 font-medium text-zinc-800 dark:text-zinc-200">{t.name}</td>
                     <td className="px-3 py-2 text-zinc-500">{t.manufacturer ?? "—"}</td>
                     <td className="px-3 py-2 text-zinc-500">{t.averagePricePerKg.toFixed(2)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-zinc-500">{t.minStockKg > 0 ? t.minStockKg.toFixed(3) : "—"}</td>
+                    <td className="space-x-2 px-3 py-2">
+                      <button type="button" className="text-amber-600 hover:underline dark:text-amber-400" onClick={() => openEditType(t)}>Upravit</button>
                       <button type="button" className={linkDanger} onClick={() => void delType(t.id)}>Smazat</button>
                     </td>
                   </tr>
@@ -274,13 +384,15 @@ export default function FilamentsPage() {
                 <th className="px-3 py-2">Typ</th>
                 <th className="px-3 py-2">Zbývá kg</th>
                 <th className="px-3 py-2">Kusů</th>
+                <th className="px-3 py-2">Šarže</th>
+                <th className="px-3 py-2">Expirace</th>
                 <th className="px-3 py-2">Přijato</th>
               </tr>
             </thead>
             <tbody className={tableBody}>
               {stocks.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-zinc-500">
+                  <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
                     Sklad je prázdný.{" "}
                     <button type="button" className="text-amber-600 hover:underline dark:text-amber-400" onClick={() => setModal("receive")}>
                       Naskladnit
@@ -293,6 +405,10 @@ export default function FilamentsPage() {
                     <td className="px-3 py-2">{s.filamentTypeName}</td>
                     <td className="px-3 py-2">{s.remainingWeightKg}</td>
                     <td className="px-3 py-2">{s.pieceCount}</td>
+                    <td className="px-3 py-2 text-zinc-500">{s.lotNumber ?? "—"}</td>
+                    <td className="px-3 py-2 text-zinc-500">
+                      {s.expirationDate ? new Date(s.expirationDate).toLocaleDateString("cs-CZ") : "—"}
+                    </td>
                     <td className="px-3 py-2 text-zinc-500">{new Date(s.receivedAt).toLocaleString("cs-CZ")}</td>
                   </tr>
                 ))
@@ -348,6 +464,37 @@ export default function FilamentsPage() {
             <input type="number" step="0.01" title="Průměr mm" placeholder="Průměr mm" className={inputClass.replace("mt-1 ", "")} value={typeForm.diameterMm} onChange={(e) => setTypeForm((f) => ({ ...f, diameterMm: parseFloat(e.target.value) || 1.75 }))} />
             <input placeholder="Barva" className={inputClass.replace("mt-1 ", "")} value={typeForm.color} onChange={(e) => setTypeForm((f) => ({ ...f, color: e.target.value }))} />
           </div>
+          <label className={labelClass}>
+            Min. zásoba (kg)
+            <input type="number" step="0.001" min={0} className={inputClass} value={typeForm.minStockKg} onChange={(e) => setTypeForm((f) => ({ ...f, minStockKg: parseFloat(e.target.value) || 0 }))} />
+          </label>
+        </form>
+      </Modal>
+
+      <Modal
+        open={modal === "editType"}
+        onClose={closeModal}
+        title={`Upravit typ${editTypeId ? ` #${editTypeId}` : ""}`}
+        footer={
+          <>
+            <button type="button" onClick={closeModal} className={btnSecondary}>Zrušit</button>
+            <button type="submit" form="edit-type-form" className={btnPrimary}>Uložit</button>
+          </>
+        }
+      >
+        {msg && modal === "editType" && <StatusBanner message={msg} />}
+        <form id="edit-type-form" onSubmit={(e) => void saveType(e)} className="mt-3 space-y-3">
+          <input placeholder="Název *" className={inputClass.replace("mt-1 ", "")} value={typeForm.name} onChange={(e) => setTypeForm((f) => ({ ...f, name: e.target.value }))} />
+          <input placeholder="Výrobce" className={inputClass.replace("mt-1 ", "")} value={typeForm.manufacturer} onChange={(e) => setTypeForm((f) => ({ ...f, manufacturer: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <input type="number" step="0.01" placeholder="Průměr mm" className={inputClass.replace("mt-1 ", "")} value={typeForm.diameterMm} onChange={(e) => setTypeForm((f) => ({ ...f, diameterMm: parseFloat(e.target.value) || 1.75 }))} />
+            <input placeholder="Barva" className={inputClass.replace("mt-1 ", "")} value={typeForm.color} onChange={(e) => setTypeForm((f) => ({ ...f, color: e.target.value }))} />
+          </div>
+          <label className={labelClass}>
+            Min. zásoba (kg)
+            <input type="number" step="0.001" min={0} className={inputClass} value={typeForm.minStockKg} onChange={(e) => setTypeForm((f) => ({ ...f, minStockKg: parseFloat(e.target.value) || 0 }))} />
+          </label>
+          <textarea placeholder="Poznámky" className={inputClass.replace("mt-1 ", "")} value={typeForm.notes} onChange={(e) => setTypeForm((f) => ({ ...f, notes: e.target.value }))} />
         </form>
       </Modal>
 
@@ -375,6 +522,14 @@ export default function FilamentsPage() {
             <label className={labelClass}>Kč/kg<input type="number" step="0.01" className={inputClass} value={recv.purchasePricePerKg} onChange={(e) => setRecv((r) => ({ ...r, purchasePricePerKg: parseFloat(e.target.value) || 0 }))} /></label>
           </div>
           <input placeholder="Dodavatel" className={inputClass.replace("mt-1 ", "")} value={recv.supplier} onChange={(e) => setRecv((r) => ({ ...r, supplier: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <input placeholder="Šarže / lot" className={inputClass.replace("mt-1 ", "")} value={recv.lotNumber} onChange={(e) => setRecv((r) => ({ ...r, lotNumber: e.target.value }))} />
+            <label className={labelClass}>
+              Expirace
+              <input type="date" className={inputClass} value={recv.expirationDate} onChange={(e) => setRecv((r) => ({ ...r, expirationDate: e.target.value }))} />
+            </label>
+          </div>
+          <input placeholder="Poznámka ke kartě" className={inputClass.replace("mt-1 ", "")} value={recv.notes} onChange={(e) => setRecv((r) => ({ ...r, notes: e.target.value }))} />
           <label className={labelClass}>Počet kusů<input type="number" min={1} className={inputClass} value={recv.pieceCount} onChange={(e) => setRecv((r) => ({ ...r, pieceCount: parseInt(e.target.value, 10) || 1 }))} /></label>
         </form>
       </Modal>

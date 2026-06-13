@@ -17,4 +17,6 @@ public class StockMovement
     public FilamentStock? FilamentStock { get; set; }
     public int? PurchaseInvoiceLineId { get; set; }
     public PurchaseInvoiceLine? PurchaseInvoiceLine { get; set; }
+    public int? CalculationId { get; set; }
+    public Calculation? Calculation { get; set; }
 }

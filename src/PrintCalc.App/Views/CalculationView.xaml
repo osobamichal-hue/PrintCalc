@@ -66,8 +66,8 @@
                                 Drop="DropZone_OnDrop"
                                 DragOver="DropZone_OnDragOver">
                             <StackPanel>
-                                <TextBlock Text="Sem přetáhněte 3MF/GCode / filament / tiskárnu" FontWeight="SemiBold" />
-                                <Button Content="Nebo vybrat 3MF/GCode soubor..." Width="240" Margin="0,8,0,8" Click="Pick3Mf_OnClick" />
+                                <TextBlock Text="Sem přetáhněte STL/OBJ/3MF/GCode / filament / tiskárnu" FontWeight="SemiBold" />
+                                <Button Content="Nebo vybrat modelový soubor..." Width="240" Margin="0,8,0,8" Click="Pick3Mf_OnClick" />
                                 <TextBlock Margin="0,8,0,0" Text="{Binding FilamentSummary, StringFormat=Materiál: {0}}" />
                                 <TextBlock Text="{Binding PrinterSummary, StringFormat=Tiskárna: {0}}" />
                                 <TextBlock Text="{Binding ModelPathDisplay, StringFormat=Model: {0}}" TextWrapping="Wrap" />
@@ -152,6 +152,30 @@
                         <CheckBox Content="Materiál zákazníka (cena materiálu 0 Kč; poznámka v nabídce a faktuře)"
                                   IsChecked="{Binding CustomerSuppliedMaterial}"
                                   Margin="0,4,0,0" />
+                        <TextBlock Text="Poplatek za slicing (Kč)" Margin="0,12,0,0" />
+                        <TextBox Margin="0,4,0,8">
+                            <TextBox.Text>
+                                <Binding Path="SlicingFeePerModel" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock Text="Koeficient zmetkovitosti (%)" />
+                        <TextBox Margin="0,4,0,8">
+                            <TextBox.Text>
+                                <Binding Path="WasteCoefficientPercent" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock Text="Post-processing (h)" />
+                        <TextBox Margin="0,4,0,8">
+                            <TextBox.Text>
+                                <Binding Path="PostProcessingHours" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock Text="Sazba post-processingu (Kč/h)" />
+                        <TextBox>
+                            <TextBox.Text>
+                                <Binding Path="PostProcessingHourlyRate" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -257,12 +281,26 @@
                                 </TextBox.Text>
                             </TextBox>
                             <TextBlock Text="{Binding ResultStartFeeBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock Text="Příprava dat / slicing (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultSlicingFee" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
+                            <TextBlock Text="Post-processing (Kč)" />
+                            <TextBox IsEnabled="{Binding ManualPriceEditingEnabled}" Margin="0,2,0,6">
+                                <TextBox.Text>
+                                    <Binding Path="ResultPostProcessing" Converter="{StaticResource DecimalFieldConverter}" UpdateSourceTrigger="LostFocus" />
+                                </TextBox.Text>
+                            </TextBox>
                             <TextBlock Text="{Binding ResultPrintRuns, StringFormat=Počet opakování tisku: {0}x}" />
                             <TextBlock Text="{Binding ResultUnitPrice, StringFormat=Cena za 1 ks: {0:N0} Kč}" />
                             <TextBlock Text="{Binding ResultUnitBreakdown}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Foreground="Gray" FontSize="11" TextWrapping="Wrap"
                                        Text="Hodinovka u tiskárny má pokrýt strojní čas včetně odpisu/amortizace a režie, které nechcete rozepisovat; energie se dopočítává z kWh/h tiskárny a ceny elektřiny v nastavení." />
-                            <TextBlock Text="{Binding ResultSubtotal, StringFormat=Mezisoučet (bez marže): {0:N0} Kč}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding ResultSubtotal, StringFormat=Mezisoučet (bez slevy a marže): {0:N0} Kč}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding ResultQuantityDiscount, StringFormat=Množstevní sleva: -{0:N0} Kč}" Foreground="Gray" />
+                            <TextBlock Text="{Binding ResultDiscountedSubtotal, StringFormat=Po slevě (před marží): {0:N0} Kč}" />
                             <TextBlock Text="{Binding ResultTotal, StringFormat=Celkem za požadované množství (s marží): {0:N0} Kč}" FontSize="16" FontWeight="Bold" />
                         </StackPanel>
                     </GroupBox>

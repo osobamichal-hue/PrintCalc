@@ -119,10 +119,32 @@ public class CalculationPdfService : ICalculationPdfService
                         table.Cell().Background(Colors.Grey.Lighten4).Padding(4).AlignRight().Text($"{full.EnergyCost:0.00} {currencySymbol}");
                         table.Cell().Padding(4).Text("Tvorba modelu");
                         table.Cell().Padding(4).AlignRight().Text($"{full.ModelDesignCost:0.00} {currencySymbol}");
-                        table.Cell().Background(Colors.Grey.Lighten4).Padding(4).Text("Pevný poplatek");
+                        table.Cell().Background(Colors.Grey.Lighten4).Padding(4).Text("Pevný poplatek (start tisku)");
                         table.Cell().Background(Colors.Grey.Lighten4).Padding(4).AlignRight().Text($"{full.StartFeeCost:0.00} {currencySymbol}");
+                        if (full.SlicingFeeCost > 0)
+                        {
+                            table.Cell().Padding(4).Text("Příprava dat (slicing)");
+                            table.Cell().Padding(4).AlignRight().Text($"{full.SlicingFeeCost:0.00} {currencySymbol}");
+                        }
+                        if (full.PostProcessingCost > 0)
+                        {
+                            table.Cell().Background(Colors.Grey.Lighten4).Padding(4).Text($"Post-processing ({full.PostProcessingHours:0.##} h)");
+                            table.Cell().Background(Colors.Grey.Lighten4).Padding(4).AlignRight().Text($"{full.PostProcessingCost:0.00} {currencySymbol}");
+                        }
+                        if (full.WasteCoefficientPercent > 0)
+                        {
+                            table.Cell().Padding(4).Text($"Koeficient zmetkovitosti ({full.WasteCoefficientPercent:0.#} %)");
+                            table.Cell().Padding(4).AlignRight().Text("zahrnuto v materiálu");
+                        }
                         table.Cell().Text("Mezisoučet").SemiBold();
                         table.Cell().AlignRight().Text($"{full.Subtotal:0.00} {currencySymbol}").SemiBold();
+                        if (full.QuantityDiscountAmount > 0)
+                        {
+                            table.Cell().Background(Colors.Grey.Lighten4).Padding(4).Text($"Množstevní sleva ({full.QuantityDiscountPercent:0.#} %)");
+                            table.Cell().Background(Colors.Grey.Lighten4).Padding(4).AlignRight().Text($"-{full.QuantityDiscountAmount:0.00} {currencySymbol}");
+                            table.Cell().Padding(4).Text("Po slevě").SemiBold();
+                            table.Cell().Padding(4).AlignRight().Text($"{full.DiscountedSubtotal:0.00} {currencySymbol}").SemiBold();
+                        }
                         table.Cell().Text("Celkem s marží").Bold();
                         table.Cell().AlignRight().Text($"{full.TotalWithMargin:0.00} {currencySymbol}").Bold();
                         table.Cell().Text("Cena za 1 ks").SemiBold();

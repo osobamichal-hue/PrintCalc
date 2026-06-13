@@ -111,6 +111,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(m => m.PurchaseInvoiceLineId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<StockMovement>()
+            .HasOne(m => m.Calculation)
+            .WithMany()
+            .HasForeignKey(m => m.CalculationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Customer>().Property(c => c.Name).HasMaxLength(256);
         modelBuilder.Entity<Customer>().Property(c => c.PreferredPaymentMethod).HasMaxLength(64);
         modelBuilder.Entity<FilamentType>().Property(f => f.Name).HasMaxLength(128);

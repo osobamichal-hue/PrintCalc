@@ -19,4 +19,19 @@ public class CalculationInput
 
     /// <summary>Při true se cena materiálu nepočítá (materiál zákazníka).</summary>
     public bool CustomerSuppliedMaterial { get; set; }
+
+    /// <summary>Jednorázový poplatek za přípravu dat ve sliceru (Kč), nezávislý na počtu tisků.</summary>
+    public decimal SlicingFeePerModel { get; set; }
+
+    /// <summary>Čas post-processingu (broušení, lakování…) v hodinách.</summary>
+    public decimal PostProcessingHours { get; set; }
+
+    /// <summary>Hodinová sazba post-processingu (Kč/h).</summary>
+    public decimal PostProcessingHourlyRate { get; set; }
+
+    /// <summary>Přírážka na materiál kvůli zmetkovitosti / supportům (%).</summary>
+    public decimal WasteCoefficientPercent { get; set; }
+
+    /// <summary>Množstevní slevová pásma (min kusů → sleva % ze subtotal před marží).</summary>
+    public IReadOnlyList<QuantityDiscountTier>? QuantityDiscountTiers { get; set; }
 }

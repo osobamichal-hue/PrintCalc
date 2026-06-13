@@ -14,6 +14,9 @@ public static class DbInitializer
         {
             db.AppSettings.Add(new AppSettingsRow { Key = "ElectricityPricePerKwh", Value = "7.50" });
             db.AppSettings.Add(new AppSettingsRow { Key = "ModelingHourlyRate", Value = "450" });
+            db.AppSettings.Add(new AppSettingsRow { Key = "Calculation.DefaultSlicingFeePerModel", Value = "100" });
+            db.AppSettings.Add(new AppSettingsRow { Key = "Calculation.PostProcessingHourlyRate", Value = "350" });
+            db.AppSettings.Add(new AppSettingsRow { Key = "Calculation.QuantityDiscountTiers", Value = "1:0;5:5;20:12" });
             db.AppSettings.Add(new AppSettingsRow { Key = "Company.Name", Value = "Moje 3D firma" });
             db.AppSettings.Add(new AppSettingsRow { Key = "Company.Address", Value = "" });
             db.AppSettings.Add(new AppSettingsRow { Key = "Company.Ico", Value = "" });
@@ -79,7 +82,10 @@ public static class DbInitializer
             ["Ai.Fallback.Endpoint"] = "",
             ["Ai.Fallback.Model"] = "",
             ["PurchaseInvoice.MatchAutoThreshold"] = "85",
-            ["PurchaseInvoice.MatchSuggestThreshold"] = "50"
+            ["PurchaseInvoice.MatchSuggestThreshold"] = "50",
+            ["Calculation.DefaultSlicingFeePerModel"] = "100",
+            ["Calculation.PostProcessingHourlyRate"] = "350",
+            ["Calculation.QuantityDiscountTiers"] = "1:0;5:5;20:12"
         };
         var changed = false;
         foreach (var (k, v) in companyDefaults)

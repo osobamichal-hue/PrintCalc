@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PrintCalc.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using PrintCalc.Infrastructure.Persistence;
 namespace PrintCalc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613140059_AddCalculationAdvancedFieldsAndModelGeometry")]
+    partial class AddCalculationAdvancedFieldsAndModelGeometry
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -289,9 +292,6 @@ namespace PrintCalc.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Manufacturer")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("MinStockKg")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -799,9 +799,6 @@ namespace PrintCalc.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CalculationId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<decimal>("DeltaKg")
                         .HasColumnType("TEXT");
 
@@ -827,8 +824,6 @@ namespace PrintCalc.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CalculationId");
 
                     b.HasIndex("FilamentStockId");
 
@@ -1054,11 +1049,6 @@ namespace PrintCalc.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PrintCalc.Core.Entities.StockMovement", b =>
                 {
-                    b.HasOne("PrintCalc.Core.Entities.Calculation", "Calculation")
-                        .WithMany()
-                        .HasForeignKey("CalculationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("PrintCalc.Core.Entities.FilamentStock", "FilamentStock")
                         .WithMany()
                         .HasForeignKey("FilamentStockId");
@@ -1073,8 +1063,6 @@ namespace PrintCalc.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PurchaseInvoiceLineId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Calculation");
 
                     b.Navigation("FilamentStock");
 

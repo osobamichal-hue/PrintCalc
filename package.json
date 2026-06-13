@@ -6,7 +6,7 @@
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web:wait\"",
     "dev:api": "dotnet run --project src/PrintCalc.Api/PrintCalc.Api.csproj --launch-profile http",
     "dev:web": "npm run dev --prefix web",
-    "dev:web:wait": "wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run dev --prefix web",
+    "dev:web:wait": "node scripts/ensure-web-next-link.mjs && wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run dev --prefix web",
     "build": "npm run build --prefix web",
     "start": "npm run start:server",
     "start:server": "concurrently -k -n api,web -c cyan,magenta \"npm run start:api:prod\" \"npm run start:web:prod:wait\"",

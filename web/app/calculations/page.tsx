@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { ModelPreview3D } from "@/components/ModelPreview3D";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { apiJson, apiVoid, downloadUrl } from "@/lib/api";
@@ -23,9 +24,25 @@ type PriceQuote = {
   energyCost: number;
   modelDesignCost: number;
   startFeeCost: number;
+  slicingFeeCost: number;
+  postProcessingCost: number;
+  wasteCoefficientPercent: number;
+  quantityDiscountPercent: number;
+  quantityDiscountAmount: number;
   subtotal: number;
+  discountedSubtotal: number;
   totalWithMargin: number;
   unitPriceForRequestedPiece: number;
+};
+
+type ModelMetadata = {
+  estimatedMaterialGrams: number | null;
+  estimatedPrintHours: number | null;
+  bboxXmm: number | null;
+  bboxYmm: number | null;
+  bboxZmm: number | null;
+  volumeCm3: number | null;
+  warnings: string[];
 };
 
 const emptyForm = () => ({
@@ -44,6 +61,10 @@ const emptyForm = () => ({
   includeModelDesign: true,
   modelDesignHours: 0,
   modelDesignHourlyRate: 0,
+  slicingFeePerModel: 100,
+  postProcessingHours: 0,
+  postProcessingHourlyRate: 350,
+  wasteCoefficientPercent: 0,
   title: "Kalkulace",
   quotePrintDescriptionOverride: "",
 });
@@ -53,6 +74,7 @@ export default function CalculationsPage() {
   const [list, setList] = useState<CalcRow[]>([]);
   const [form, setForm] = useState(emptyForm());
   const [preview, setPreview] = useState<PriceQuote | null>(null);
+  const [modelMeta, setModelMeta] = useState<ModelMetadata | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -77,6 +99,25 @@ export default function CalculationsPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!form.printModelId) {
+      setModelMeta(null);
+      return;
+    }
+    const q = form.filamentTypeId ? `?filamentTypeId=${form.filamentTypeId}` : "";
+    void apiJson<ModelMetadata>(`/api/print-models/${form.printModelId}/metadata${q}`)
+      .then((meta) => {
+        setModelMeta(meta);
+        setForm((f) => ({
+          ...f,
+          materialGrams: meta.estimatedMaterialGrams ?? f.materialGrams,
+          printHours: meta.estimatedPrintHours ?? f.printHours,
+        }));
+        if (meta.warnings?.length) setMsg(meta.warnings.join(" · "));
+      })
+      .catch(() => setModelMeta(null));
+  }, [form.printModelId, form.filamentTypeId]);
 
   function openNewForm() {
     setForm(emptyForm());
@@ -106,6 +147,10 @@ export default function CalculationsPage() {
       includeModelDesign: form.includeModelDesign,
       modelDesignHours: form.modelDesignHours,
       modelDesignHourlyRate: form.modelDesignHourlyRate,
+      slicingFeePerModel: form.slicingFeePerModel,
+      postProcessingHours: form.postProcessingHours,
+      postProcessingHourlyRate: form.postProcessingHourlyRate,
+      wasteCoefficientPercent: form.wasteCoefficientPercent,
       title: form.title,
       quotePrintDescriptionOverride: form.quotePrintDescriptionOverride || null,
     };
@@ -122,6 +167,17 @@ export default function CalculationsPage() {
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Chyba");
       setPreview(null);
+    }
+  }
+
+  async function issueStockFromCalc() {
+    if (!form.id) return;
+    setMsg(null);
+    try {
+      await apiVoid(`/api/calculations/${form.id}/issue-stock`, { method: "POST" });
+      setMsg("Materiál byl vydán ze skladu.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Chyba");
     }
   }
 
@@ -167,6 +223,10 @@ export default function CalculationsPage() {
         includeModelDesign: Boolean(c.includeModelDesign),
         modelDesignHours: Number(c.modelDesignHours),
         modelDesignHourlyRate: Number(c.modelDesignHourlyRate),
+        slicingFeePerModel: Number(c.slicingFeePerModel ?? 100),
+        postProcessingHours: Number(c.postProcessingHours ?? 0),
+        postProcessingHourlyRate: Number(c.postProcessingHourlyRate ?? 350),
+        wasteCoefficientPercent: Number(c.wasteCoefficientPercent ?? 0),
         title: String(c.title),
         quotePrintDescriptionOverride: String(c.quotePrintDescriptionOverride ?? ""),
       });
@@ -265,6 +325,11 @@ export default function CalculationsPage() {
         footer={
           <>
             <button type="button" onClick={closeForm} className={btnSecondary}>Zrušit</button>
+            {form.id && !form.customerSuppliedMaterial && form.filamentTypeId && (
+              <button type="button" onClick={() => void issueStockFromCalc()} className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">
+                Vydat ze skladu
+              </button>
+            )}
             <button type="button" onClick={() => void runPreview()} className={btnSecondary}>Přepočítat</button>
             <button type="button" onClick={() => void save()} className={btnPrimary}>Uložit</button>
           </>
@@ -355,6 +420,23 @@ export default function CalculationsPage() {
               </label>
             </div>
 
+            {form.printModelId && (
+              <div className="mt-3 space-y-2">
+                <ModelPreview3D
+                  modelId={form.printModelId}
+                  fileType={lookups.printModels.find((m) => m.id === form.printModelId)?.fileType}
+                />
+                {modelMeta && (modelMeta.bboxXmm || modelMeta.volumeCm3) && (
+                  <p className="text-xs text-zinc-500">
+                    {modelMeta.bboxXmm
+                      ? `Rozměry: ${modelMeta.bboxXmm}×${modelMeta.bboxYmm}×${modelMeta.bboxZmm} mm`
+                      : ""}
+                    {modelMeta.volumeCm3 ? ` · Objem: ${modelMeta.volumeCm3} cm³` : ""}
+                  </p>
+                )}
+              </div>
+            )}
+
             <input
               placeholder="Název kalkulace"
               className="mt-3 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
@@ -437,6 +519,66 @@ export default function CalculationsPage() {
               />
             </label>
 
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <label className="text-xs text-zinc-500">
+                Slicing fee (Kč)
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  value={form.slicingFeePerModel}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      slicingFeePerModel: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </label>
+              <label className="text-xs text-zinc-500">
+                Zmetkovitost (%)
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  value={form.wasteCoefficientPercent}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      wasteCoefficientPercent: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </label>
+              <label className="text-xs text-zinc-500">
+                Post-proc. (h)
+                <input
+                  type="number"
+                  step="0.01"
+                  className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  value={form.postProcessingHours}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      postProcessingHours: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </label>
+              <label className="text-xs text-zinc-500">
+                Post-proc. Kč/h
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  value={form.postProcessingHourlyRate}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      postProcessingHourlyRate: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+
             <div className="mt-3 flex flex-wrap gap-4 text-sm text-zinc-700 dark:text-zinc-300">
               <label className="flex items-center gap-2">
                 <input
@@ -502,9 +644,14 @@ export default function CalculationsPage() {
                 <div>Celkem: {preview.totalWithMargin} Kč</div>
                 <div>za ks: {preview.unitPriceForRequestedPiece} Kč</div>
                 <div className="mt-2 text-xs text-zinc-500">
-                  Tisků: {preview.printRuns} · Materiál {preview.materialCost} · Tisk{" "}
-                  {preview.printCost} · Energie {preview.energyCost} · Model{" "}
-                  {preview.modelDesignCost} · Start {preview.startFeeCost}
+                  Tisků: {preview.printRuns} · Materiál {preview.materialCost}
+                  {preview.wasteCoefficientPercent > 0 ? ` (vč. ${preview.wasteCoefficientPercent}% waste)` : ""}
+                  {" · "}Tisk {preview.printCost} · Energie {preview.energyCost} · Model{" "}
+                  {preview.modelDesignCost} · Start {preview.startFeeCost} · Slicing{" "}
+                  {preview.slicingFeeCost} · Post-proc. {preview.postProcessingCost}
+                  {preview.quantityDiscountAmount > 0
+                    ? ` · Sleva -${preview.quantityDiscountAmount} (${preview.quantityDiscountPercent}%)`
+                    : ""}
                 </div>
               </div>
             )}

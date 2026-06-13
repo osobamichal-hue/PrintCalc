@@ -65,6 +65,8 @@ public static class DependencyInjection
         services.AddSingleton<ICalculationEngine, CalculationEngine>();
         services.AddSingleton<IThreeMfReader, ThreeMfReader>();
         services.AddSingleton<IGcodeReader, GcodeReader>();
+        services.AddSingleton<IMeshReader, StlObjMeshReader>();
+        services.AddSingleton<IModelMetadataResolver, ModelMetadataResolver>();
 
         if (forWebHost)
         {

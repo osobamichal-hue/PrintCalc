@@ -117,6 +117,7 @@ public static class MapInventoryEndpoints
                 NozzleTempMaxC = body.NozzleTempMaxC,
                 BedTempMinC = body.BedTempMinC,
                 BedTempMaxC = body.BedTempMaxC,
+                MinStockKg = Math.Max(0, body.MinStockKg),
                 Notes = ApiStringUtil.TrimOrNull(body.Notes),
                 AveragePricePerKg = 0
             };
@@ -140,6 +141,7 @@ public static class MapInventoryEndpoints
             t.NozzleTempMaxC = body.NozzleTempMaxC;
             t.BedTempMinC = body.BedTempMinC;
             t.BedTempMaxC = body.BedTempMaxC;
+            t.MinStockKg = Math.Max(0, body.MinStockKg);
             t.Notes = ApiStringUtil.TrimOrNull(body.Notes);
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
@@ -201,7 +203,8 @@ public static class MapInventoryEndpoints
                 m.UnitPricePerKg,
                 m.Note,
                 m.OccurredAt,
-                m.FilamentStockId)));
+                m.FilamentStockId,
+                m.CalculationId)));
         });
 
         app.MapPost("/api/stock/receive", async (ReceiveStockDto body, IStockService stock, AppDbContext db, CancellationToken ct) =>
@@ -229,13 +232,20 @@ public static class MapInventoryEndpoints
             return Results.NoContent();
         });
 
+        app.MapGet("/api/stock/alerts", async (int? expiringWithinDays, IStockService stock, CancellationToken ct) =>
+        {
+            var days = expiringWithinDays is int d and > 0 ? d : 30;
+            var alerts = await stock.GetAlertsAsync(days, ct);
+            return Results.Ok(alerts.Select(StockAlertResponse.FromModel));
+        });
+
         app.MapPost("/api/stock/issue", async (IssueStockDto body, IStockService stock, AppDbContext db, CancellationToken ct) =>
         {
             if (!await db.FilamentTypes.AsNoTracking().AnyAsync(f => f.Id == body.FilamentTypeId, ct))
                 return Results.BadRequest(new { error = "Neznámý typ filamentu." });
             try
             {
-                await stock.IssueAsync(body.FilamentTypeId, body.WeightKg, ApiStringUtil.TrimOrNull(body.Note) ?? "Výdej", ct);
+                await stock.IssueAsync(body.FilamentTypeId, body.WeightKg, ApiStringUtil.TrimOrNull(body.Note) ?? "Výdej", body.CalculationId, ct);
             }
             catch (InvalidOperationException ex)
             {
@@ -287,6 +297,7 @@ public record FilamentTypeWriteDto(
     int? NozzleTempMaxC,
     int? BedTempMinC,
     int? BedTempMaxC,
+    decimal MinStockKg,
     string? Notes);
 
 public record FilamentTypeResponse(
@@ -301,6 +312,7 @@ public record FilamentTypeResponse(
     int? BedTempMinC,
     int? BedTempMaxC,
     decimal AveragePricePerKg,
+    decimal MinStockKg,
     string? Notes)
 {
     public static FilamentTypeResponse FromEntity(FilamentType t) => new(
@@ -315,6 +327,7 @@ public record FilamentTypeResponse(
         t.BedTempMinC,
         t.BedTempMaxC,
         t.AveragePricePerKg,
+        t.MinStockKg,
         t.Notes);
 }
 
@@ -356,7 +369,31 @@ public record StockMovementResponse(
     decimal? UnitPricePerKg,
     string? Note,
     DateTime OccurredAt,
-    int? FilamentStockId);
+    int? FilamentStockId,
+    int? CalculationId);
+
+public record StockAlertResponse(
+    string Kind,
+    int FilamentTypeId,
+    string FilamentTypeName,
+    decimal CurrentKg,
+    decimal? MinStockKg,
+    int? FilamentStockId,
+    string? LotNumber,
+    DateTime? ExpirationDate,
+    string Message)
+{
+    public static StockAlertResponse FromModel(PrintCalc.Core.Models.StockAlert a) => new(
+        a.Kind.ToString(),
+        a.FilamentTypeId,
+        a.FilamentTypeName,
+        a.CurrentKg,
+        a.MinStockKg,
+        a.FilamentStockId,
+        a.LotNumber,
+        a.ExpirationDate,
+        a.Message);
+}
 
 public record ReceiveStockDto(
     int FilamentTypeId,
@@ -368,4 +405,4 @@ public record ReceiveStockDto(
     DateTime? ExpirationDate,
     string? Notes);
 
-public record IssueStockDto(int FilamentTypeId, decimal WeightKg, string? Note);
+public record IssueStockDto(int FilamentTypeId, decimal WeightKg, string? Note, int? CalculationId);

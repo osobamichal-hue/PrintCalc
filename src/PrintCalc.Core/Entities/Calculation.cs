@@ -35,7 +35,23 @@ public class Calculation
     public decimal ModelDesignCost { get; set; }
     /// <summary>Uplatněný pevný poplatek za tisk z profilu tiskárny, Kč.</summary>
     public decimal StartFeeCost { get; set; }
+
+    /// <summary>Poplatek za přípravu dat ve sliceru (Kč), jednorázově na kalkulaci.</summary>
+    public decimal SlicingFeePerModel { get; set; }
+    public decimal SlicingFeeCost { get; set; }
+
+    public decimal PostProcessingHours { get; set; }
+    public decimal PostProcessingHourlyRate { get; set; }
+    public decimal PostProcessingCost { get; set; }
+
+    /// <summary>Koeficient zmetkovitosti aplikovaný na materiál (%).</summary>
+    public decimal WasteCoefficientPercent { get; set; }
+
+    public decimal QuantityDiscountPercent { get; set; }
+    public decimal QuantityDiscountAmount { get; set; }
+
     public decimal Subtotal { get; set; }
+    public decimal DiscountedSubtotal { get; set; }
     public decimal TotalWithMargin { get; set; }
     public decimal UnitPrice { get; set; }
 

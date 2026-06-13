@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using PrintCalc.Core.Entities;
+using PrintCalc.Core.Enums;
 using PrintCalc.Core.Services;
 using PrintCalc.Infrastructure.Persistence;
 
@@ -15,8 +16,7 @@ namespace PrintCalc.App.ViewModels;
 public partial class ModelsViewModel : ObservableObject
 {
     private readonly AppDbContext _db;
-    private readonly IThreeMfReader _threeMf;
-    private readonly IGcodeReader _gcode;
+    private readonly IModelMetadataResolver _metadataResolver;
 
     public ObservableCollection<PrintModel> Items { get; } = new();
     public ObservableCollection<Customer> Customers { get; } = new();
@@ -25,11 +25,10 @@ public partial class ModelsViewModel : ObservableObject
     [ObservableProperty] private string searchText = "";
     [ObservableProperty] private string statusMessage = "";
 
-    public ModelsViewModel(AppDbContext db, IThreeMfReader threeMf, IGcodeReader gcode)
+    public ModelsViewModel(AppDbContext db, IModelMetadataResolver metadataResolver)
     {
         _db = db;
-        _threeMf = threeMf;
-        _gcode = gcode;
+        _metadataResolver = metadataResolver;
         _ = LoadAsync();
     }
 
@@ -62,6 +61,13 @@ public partial class ModelsViewModel : ObservableObject
                          OriginalFileName = x.OriginalFileName,
                          EstimatedMaterialGrams = x.EstimatedMaterialGrams,
                          EstimatedPrintHours = x.EstimatedPrintHours,
+                         VolumeCm3 = x.VolumeCm3,
+                         SurfaceCm2 = x.SurfaceCm2,
+                         BboxXmm = x.BboxXmm,
+                         BboxYmm = x.BboxYmm,
+                         BboxZmm = x.BboxZmm,
+                         EstimateSource = x.EstimateSource,
+                         GeometryWarnings = x.GeometryWarnings,
                          Notes = x.Notes,
                          CreatedAt = x.CreatedAt,
                          FileContent = Array.Empty<byte>()
@@ -75,30 +81,17 @@ public partial class ModelsViewModel : ObservableObject
     {
         var dlg = new OpenFileDialog
         {
-            Title = "Vyberte model (STL/3MF/GCode)",
-            Filter = "Modely (*.stl;*.3mf;*.gcode;*.gco)|*.stl;*.3mf;*.gcode;*.gco|Všechny soubory (*.*)|*.*"
+            Title = "Vyberte model (STL/OBJ/3MF/GCode)",
+            Filter = "Modely (*.stl;*.obj;*.3mf;*.gcode;*.gco)|*.stl;*.obj;*.3mf;*.gcode;*.gco|Všechny soubory (*.*)|*.*"
         };
         if (dlg.ShowDialog() != true) return;
 
         var path = dlg.FileName;
         var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
         var type = ext.TrimStart('.').ToUpperInvariant();
+        if (type == "GCO") type = "GCODE";
         var bytes = await File.ReadAllBytesAsync(path);
-        decimal? grams = null;
-        decimal? hours = null;
-
-        if (ext == ".3mf")
-        {
-            var meta = _threeMf.ReadMetadata(path);
-            grams = meta.MaterialGrams;
-            hours = meta.PrintHours;
-        }
-        else if (ext is ".gcode" or ".gco")
-        {
-            var meta = _gcode.ReadMetadata(path);
-            grams = meta.MaterialGrams;
-            hours = meta.PrintHours;
-        }
+        var meta = _metadataResolver.Resolve(path);
 
         var item = new PrintModel
         {
@@ -107,8 +100,15 @@ public partial class ModelsViewModel : ObservableObject
             FilePath = path,
             OriginalFileName = System.IO.Path.GetFileName(path),
             FileContent = bytes,
-            EstimatedMaterialGrams = grams,
-            EstimatedPrintHours = hours
+            EstimatedMaterialGrams = meta.MaterialGrams,
+            EstimatedPrintHours = meta.PrintHours,
+            VolumeCm3 = meta.VolumeCm3,
+            SurfaceCm2 = meta.SurfaceCm2,
+            BboxXmm = meta.BboxXmm,
+            BboxYmm = meta.BboxYmm,
+            BboxZmm = meta.BboxZmm,
+            EstimateSource = meta.EstimateSource,
+            GeometryWarnings = meta.Warnings.Count == 0 ? null : string.Join("\n", meta.Warnings)
         };
         _db.PrintModels.Add(item);
         await _db.SaveChangesAsync();
