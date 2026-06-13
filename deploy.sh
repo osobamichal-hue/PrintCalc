@@ -136,11 +136,13 @@ else
 fi
 
 # --- Oprávnění skriptů ---
-chmod +x start-web.sh start-server.sh deploy.sh 2>/dev/null || true
+chmod +x start-api.sh start-web.sh start-server.sh deploy.sh 2>/dev/null || true
 
 # --- API build ---
 log "Build API (Release)…"
 dotnet build src/PrintCalc.Api/PrintCalc.Api.csproj -c Release --nologo -v q
+API_DLL="src/PrintCalc.Api/bin/Release/net8.0/PrintCalc.Api.dll"
+[[ -f "$API_DLL" ]] || fail "Chybí $API_DLL po buildu"
 ok "API build hotov"
 
 # --- Web build ---
@@ -155,16 +157,8 @@ if [[ ! -d node_modules/wait-on ]]; then
   npm install --no-fund --no-audit
 fi
 
-# --- PM2 ---
-if [[ "$PM2_SETUP" -eq 1 ]] || ! pm2 describe printcalc-api >/dev/null 2>&1; then
-  pm2_start_fresh
-elif ! pm2 describe printcalc-web >/dev/null 2>&1; then
-  log "PM2 — chybí web, doplňuji…"
-  wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
-  pm2 start ecosystem.config.cjs --only printcalc-web
-else
-  pm2_restart_services
-fi
+# --- PM2 (vždy čistý start — spolehlivější než restart po stop) ---
+pm2_start_fresh
 
 pm2 save
 ok "PM2 uloženo"

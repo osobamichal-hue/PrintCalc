@@ -43,4 +43,6 @@ Thumbs.db
 # misc
 .vercel
 coverage/
-@p0
+data/
+*.db-shm
+*.db-wal
