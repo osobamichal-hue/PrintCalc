@@ -8,9 +8,11 @@
     "dev:web": "npm run dev --prefix web",
     "dev:web:wait": "wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run dev --prefix web",
     "build": "npm run build --prefix web",
-    "start": "concurrently -k -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run start:web:wait\"",
-    "start:web": "npm run start --prefix web",
-    "start:web:wait": "wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run start --prefix web",
+    "start": "npm run start:server",
+    "start:server": "concurrently -k -n api,web -c cyan,magenta \"npm run start:api:prod\" \"npm run start:web:prod:wait\"",
+    "start:api:prod": "dotnet run --project src/PrintCalc.Api/PrintCalc.Api.csproj -c Release --no-launch-profile",
+    "start:web:prod:wait": "wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run start --prefix web -- -p 3001",
+    "start:web": "npm run start --prefix web -- -p 3001",
     "lint": "npm run lint --prefix web"
   },
   "devDependencies": {

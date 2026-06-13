@@ -69,6 +69,27 @@ export function downloadUrl(path: string): string {
   return apiUrl(path);
 }
 
+export async function downloadFile(path: string, fallbackFilename: string): Promise<void> {
+  const r = await fetch(apiUrl(path));
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(parseApiError(r.statusText, t));
+  }
+  const blob = await r.blob();
+  let filename = fallbackFilename;
+  const cd = r.headers.get("content-disposition");
+  const match = cd?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
+  if (match?.[1]) filename = match[1].replace(/['"]/g, "");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function apiForm<T>(path: string, formData: FormData): Promise<T> {
   const r = await fetch(apiUrl(path), {
     method: "POST",

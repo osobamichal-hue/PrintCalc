@@ -1,6 +1,6 @@
 type Props = {
   message: string;
-  variant?: "warning" | "error" | "info";
+  variant?: "warning" | "error" | "info" | "success";
 };
 
 const styles = {
@@ -9,6 +9,8 @@ const styles = {
   error:
     "border-red-300 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200",
   info: "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-300",
+  success:
+    "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200",
 };
 
 export function StatusBanner({ message, variant = "warning" }: Props) {

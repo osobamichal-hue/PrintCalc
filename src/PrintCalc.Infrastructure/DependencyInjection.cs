@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PrintCalc.Core.Services;
 using PrintCalc.Infrastructure.Persistence;
 using PrintCalc.Infrastructure.Services;
+using PrintCalc.Infrastructure.Services.Backup;
 using PrintCalc.Infrastructure.Services.PurchaseInvoices;
 
 namespace PrintCalc.Infrastructure;
@@ -81,6 +82,7 @@ public static class DependencyInjection
             services.AddScoped<IQuotePdfService, QuotePdfService>();
             services.AddScoped<IAccountingExportService, AccountingExportService>();
             services.AddScoped<IDocumentNumberService, DocumentNumberService>();
+            services.AddScoped<IBackupService, BackupService>();
         }
         else
         {
@@ -90,6 +92,7 @@ public static class DependencyInjection
             services.AddSingleton<IQuotePdfService, QuotePdfService>();
             services.AddSingleton<IAccountingExportService, AccountingExportService>();
             services.AddSingleton<IDocumentNumberService, DocumentNumberService>();
+            services.AddSingleton<IBackupService, BackupService>();
         }
 
         return services;

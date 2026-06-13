@@ -45,7 +45,7 @@ export function Modal({ open, onClose, title, children, footer, size = "lg" }: P
   const resizeRef = useRef<ResizeState | null>(null);
 
   const [pos, setPos] = useState({ x: 80, y: 48 });
-  const [dim, setDim] = useState({ w: cfg.w, h: cfg.h });
+  const [dim, setDim] = useState<{ w: number; h: number }>({ w: cfg.w, h: cfg.h });
   const [session, setSession] = useState(0);
 
   useEffect(() => {

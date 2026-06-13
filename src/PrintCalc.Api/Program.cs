@@ -44,5 +44,6 @@ app.MapModelsAndCalculations();
 app.MapDocuments();
 app.MapPurchaseInvoices();
 app.MapStatistics();
+app.MapBackup();
 
 app.Run();

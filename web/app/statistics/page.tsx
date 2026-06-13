@@ -128,6 +128,22 @@ function fmtKc(n: number) {
   return `${fmt(n)} Kč`;
 }
 
+function axisThousands(v: unknown) {
+  return `${Number(v ?? 0) / 1000}k`;
+}
+
+function tooltipKc(v: unknown) {
+  return fmtKc(Number(v ?? 0));
+}
+
+function tooltipKcOrHours(v: unknown, name: unknown) {
+  return name === "Hodiny" ? `${Number(v ?? 0)} h` : fmtKc(Number(v ?? 0));
+}
+
+function pieSliceLabel({ name, percent }: { name?: string; percent?: number }) {
+  return `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`;
+}
+
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
@@ -339,8 +355,8 @@ export default function StatisticsPage() {
             <LineChart data={documentsMonthly}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
-              <Tooltip formatter={(v: number) => fmtKc(v)} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
+              <Tooltip formatter={tooltipKc} />
               <Legend />
               <Line type="monotone" dataKey="Nabídky" stroke="#3b82f6" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Zakázky" stroke="#8b5cf6" strokeWidth={2} dot={false} />
@@ -354,8 +370,8 @@ export default function StatisticsPage() {
             <BarChart data={profitVsCostMonthly}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
-              <Tooltip formatter={(v: number) => fmtKc(v)} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
+              <Tooltip formatter={tooltipKc} />
               <Legend />
               <Bar dataKey="Náklady" fill="#ef4444" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Tržby" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -370,9 +386,9 @@ export default function StatisticsPage() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={pipelineBar} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
+              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
               <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v: number) => fmtKc(v)} />
+              <Tooltip formatter={tooltipKc} />
               <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -389,12 +405,12 @@ export default function StatisticsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
-                <Pie data={costPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={95} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={costPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={95} label={pieSliceLabel}>
                   {costPie.map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => fmtKc(v)} />
+                <Tooltip formatter={tooltipKc} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -410,8 +426,8 @@ export default function StatisticsPage() {
               <BarChart data={topCustomersChart}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
-                <Tooltip formatter={(v: number) => fmtKc(v)} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
+                <Tooltip formatter={tooltipKc} />
                 <Legend />
                 <Bar dataKey="Nabídnuto" fill="#94a3b8" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Fakturováno" fill="#f59e0b" radius={[4, 4, 0, 0]} />
@@ -429,8 +445,8 @@ export default function StatisticsPage() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
-                <Tooltip formatter={(v: number, name: string) => (name === "Hodiny" ? `${v} h` : fmtKc(v))} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
+                <Tooltip formatter={tooltipKcOrHours} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="Hodiny" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar yAxisId="right" dataKey="Tržby" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -449,8 +465,8 @@ export default function StatisticsPage() {
             <BarChart data={gapChart}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={55} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v as number) / 1000}k`} />
-              <Tooltip formatter={(v: number) => fmtKc(v)} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={axisThousands} />
+              <Tooltip formatter={tooltipKc} />
               <Legend />
               <Bar dataKey="Nabídky" fill="#6366f1" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Faktury" fill="#f59e0b" radius={[4, 4, 0, 0]} />

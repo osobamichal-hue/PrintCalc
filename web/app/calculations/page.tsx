@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { apiJson, apiVoid, downloadUrl } from "@/lib/api";
-import { btnPrimary, btnSecondary, inputClass, labelClass, linkAction, linkDanger, linkMuted, tableBody, tableHead, tableWrap } from "@/lib/ui";
+import { btnPrimary, btnSecondary, labelClass, linkAction, linkDanger, linkMuted, tableBody, tableHead, tableWrap } from "@/lib/ui";
 import type { Lookups } from "@/lib/types";
 
 type CalcRow = {
