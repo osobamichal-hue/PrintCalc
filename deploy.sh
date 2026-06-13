@@ -65,23 +65,52 @@ wait_for_url() {
     sleep 2
     elapsed=$((elapsed + 2))
   done
-  fail "$label neodpovídá do ${timeout}s ($url) — zkuste: pm2 logs printcalc-api"
+  echo "" >&2
+  pm2 logs printcalc-api --lines 25 --nostream 2>/dev/null || true
+  fail "$label neodpovídá do ${timeout}s ($url) — viz logy výše"
+}
+
+wait_for_port_free() {
+  local port="$1"
+  local elapsed=0
+  while ss -tln 2>/dev/null | grep -q ":${port} "; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if (( elapsed % 5 == 0 )); then
+      log "Port ${port} stále obsazen… (${elapsed}s)"
+    fi
+    if (( elapsed >= 45 )); then
+      fail "Port ${port} je stále obsazen — zkuste: pm2 delete all && ss -tlnp | grep ${port}"
+    fi
+  done
+}
+
+pm2_stop_all() {
+  log "Zastavuji PM2 služby…"
+  pm2 stop printcalc-web printcalc-api 2>/dev/null || true
+  sleep 2
+  wait_for_port_free 5281
+  wait_for_port_free 3001
 }
 
 pm2_start_fresh() {
   log "PM2 — čisté spuštění (API → web)…"
   pm2 delete printcalc printcalc-api printcalc-web 2>/dev/null || true
+  sleep 2
+  wait_for_port_free 5281
+  wait_for_port_free 3001
   pm2 start ecosystem.config.cjs --only printcalc-api
   wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
   pm2 start ecosystem.config.cjs --only printcalc-web
 }
 
 pm2_restart_services() {
-  log "Restart API…"
-  pm2 restart printcalc-api
+  pm2_stop_all
+  log "Spouštím API…"
+  pm2 start printcalc-api --update-env 2>/dev/null || pm2 start ecosystem.config.cjs --only printcalc-api
   wait_for_url "$API_URL" "API" "$API_WAIT_SEC"
-  log "Restart webu…"
-  pm2 restart printcalc-web
+  log "Spouštím web…"
+  pm2 start printcalc-web --update-env 2>/dev/null || pm2 start ecosystem.config.cjs --only printcalc-web
 }
 
 require_cmd git

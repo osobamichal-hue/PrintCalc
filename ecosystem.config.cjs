@@ -9,14 +9,15 @@ module.exports = {
       name: "printcalc-api",
       cwd: root,
       script: "dotnet",
-      args: "run --project src/PrintCalc.Api/PrintCalc.Api.csproj -c Release --no-launch-profile",
+      args: "src/PrintCalc.Api/bin/Release/net8.0/PrintCalc.Api.dll",
       env: {
         ASPNETCORE_ENVIRONMENT: "Production",
         ASPNETCORE_URLS: "http://0.0.0.0:5281",
       },
       autorestart: true,
-      max_restarts: 20,
-      min_uptime: "10s",
+      max_restarts: 10,
+      min_uptime: "15s",
+      kill_timeout: 8000,
     },
     {
       name: "printcalc-web",

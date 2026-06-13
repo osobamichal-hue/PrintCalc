@@ -15,4 +15,4 @@ fi
 echo "Čekám na API http://127.0.0.1:5281/api/health …"
 npx wait-on -t 120000 http-get://127.0.0.1:5281/api/health
 echo "Spouštím Next.js na portu ${WEB_PORT} …"
-exec npm run start --prefix web -- -p "${WEB_PORT}"
+exec npm run start --prefix web -- -p "${WEB_PORT}" -H 0.0.0.0
