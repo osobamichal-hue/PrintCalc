@@ -13,6 +13,7 @@
     "start:api:prod": "dotnet run --project src/PrintCalc.Api/PrintCalc.Api.csproj -c Release --no-launch-profile",
     "start:web:prod:wait": "wait-on -t 120000 http-get://127.0.0.1:5281/api/health && npm run start --prefix web -- -p 3001",
     "start:web": "npm run start --prefix web -- -p 3001",
+    "deploy": "bash deploy.sh",
     "lint": "npm run lint --prefix web"
   },
   "devDependencies": {
