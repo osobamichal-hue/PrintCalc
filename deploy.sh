@@ -70,17 +70,47 @@ wait_for_url() {
   fail "$label neodpovídá do ${timeout}s ($url) — viz logy výše"
 }
 
+kill_port() {
+  local port="$1"
+  local pids=""
+
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${port}/tcp" >/dev/null 2>&1 || true
+  fi
+
+  # Fallback: PIDy z ss (osiřelý dotnet po pm2 delete)
+  pids="$(ss -tlnp 2>/dev/null | awk -v p=":${port}" '
+    index($0, p) {
+      while (match($0, /pid=[0-9]+/)) {
+        print substr($0, RSTART+4, RLENGTH-4)
+        $0 = substr($0, RSTART+RLENGTH)
+      }
+    }' | sort -u | tr '\n' ' ')"
+  if [[ -n "${pids// }" ]]; then
+    log "Uvolňuji port ${port} (PID: ${pids})"
+    # shellcheck disable=SC2086
+    kill -TERM ${pids} 2>/dev/null || true
+    sleep 1
+    # shellcheck disable=SC2086
+    kill -KILL ${pids} 2>/dev/null || true
+  fi
+}
+
 wait_for_port_free() {
   local port="$1"
   local elapsed=0
-  while ss -tln 2>/dev/null | grep -q ":${port} "; do
+  while ss -tln 2>/dev/null | grep -qE ":${port}([[:space:]]|$)" ; do
+    if (( elapsed == 0 || elapsed == 3 || elapsed == 8 )); then
+      kill_port "$port"
+    fi
     sleep 1
     elapsed=$((elapsed + 1))
     if (( elapsed % 5 == 0 )); then
       log "Port ${port} stále obsazen… (${elapsed}s)"
     fi
     if (( elapsed >= 45 )); then
-      fail "Port ${port} je stále obsazen — zkuste: pm2 delete all && ss -tlnp | grep ${port}"
+      ss -tlnp 2>/dev/null | grep -E ":${port}([[:space:]]|$)" || true
+      fail "Port ${port} je stále obsazen — zkuste: ss -tlnp | grep ${port} && sudo fuser -k ${port}/tcp"
     fi
   done
 }
@@ -95,8 +125,11 @@ pm2_stop_all() {
 
 pm2_start_fresh() {
   log "PM2 — čisté spuštění (API → web)…"
+  pm2 stop printcalc-web printcalc-api 2>/dev/null || true
   pm2 delete printcalc printcalc-api printcalc-web 2>/dev/null || true
-  sleep 2
+  sleep 1
+  kill_port 5281
+  kill_port 3001
   wait_for_port_free 5281
   wait_for_port_free 3001
   pm2 start ecosystem.config.cjs --only printcalc-api
