@@ -119,7 +119,7 @@ public static class MapInventoryEndpoints
                 BedTempMaxC = body.BedTempMaxC,
                 MinStockKg = Math.Max(0, body.MinStockKg),
                 Notes = ApiStringUtil.TrimOrNull(body.Notes),
-                AveragePricePerKg = 0
+                AveragePricePerKg = Math.Max(0, body.AveragePricePerKg)
             };
             db.FilamentTypes.Add(t);
             await db.SaveChangesAsync(ct);
@@ -143,6 +143,7 @@ public static class MapInventoryEndpoints
             t.BedTempMaxC = body.BedTempMaxC;
             t.MinStockKg = Math.Max(0, body.MinStockKg);
             t.Notes = ApiStringUtil.TrimOrNull(body.Notes);
+            t.AveragePricePerKg = Math.Max(0, body.AveragePricePerKg);
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         });
@@ -185,6 +186,27 @@ public static class MapInventoryEndpoints
                 q = q.Where(s => s.RemainingWeightKg > 0);
             var list = await q.OrderByDescending(s => s.ReceivedAt).ToListAsync(ct);
             return Results.Ok(list.Select(FilamentStockResponse.FromEntity));
+        });
+
+        app.MapPut("/api/filament-stocks/{id:int}", async (int id, FilamentStockWriteDto body, IStockService stock, AppDbContext db, CancellationToken ct) =>
+        {
+            var s = await db.FilamentStocks.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (s is null) return Results.NotFound();
+
+            var priceChanged = s.PurchasePricePerKg != Math.Max(0, body.PurchasePricePerKg);
+            s.PurchasePricePerKg = Math.Max(0, body.PurchasePricePerKg);
+            s.LotNumber = ApiStringUtil.TrimOrNull(body.LotNumber);
+            s.ExpirationDate = body.ExpirationDate;
+            s.Notes = ApiStringUtil.TrimOrNull(body.Notes);
+            if (body.PieceCount is int pc && pc >= 1)
+                s.PieceCount = pc;
+
+            await db.SaveChangesAsync(ct);
+
+            if (priceChanged)
+                await stock.RecalculateAveragePriceAsync(s.FilamentTypeId, ct);
+
+            return Results.NoContent();
         });
 
         app.MapGet("/api/stock-movements", async (AppDbContext db, CancellationToken ct) =>
@@ -298,6 +320,7 @@ public record FilamentTypeWriteDto(
     int? BedTempMinC,
     int? BedTempMaxC,
     decimal MinStockKg,
+    decimal AveragePricePerKg,
     string? Notes);
 
 public record FilamentTypeResponse(
@@ -394,6 +417,13 @@ public record StockAlertResponse(
         a.ExpirationDate,
         a.Message);
 }
+
+public record FilamentStockWriteDto(
+    decimal PurchasePricePerKg,
+    string? LotNumber,
+    DateTime? ExpirationDate,
+    string? Notes,
+    int? PieceCount);
 
 public record ReceiveStockDto(
     int FilamentTypeId,

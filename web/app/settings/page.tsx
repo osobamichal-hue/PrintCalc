@@ -168,6 +168,24 @@ export default function SettingsPage() {
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Množstevní sleva (kalkulace)</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Pásma automatické slevy ze subtotalu před marží. Formát:{" "}
+          <code className="text-[11px]">minKs:sleva%;minKs:sleva%</code> — např.{" "}
+          <code className="text-[11px]">1:0;5:5;20:12</code> (od 5 ks 5&nbsp;%, od 20 ks 12&nbsp;%).
+        </p>
+        <label className="mt-3 block text-xs text-zinc-500">
+          Calculation.QuantityDiscountTiers
+          <input
+            className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            value={rows.find((x) => x.key === "Calculation.QuantityDiscountTiers")?.value ?? "1:0;5:5;20:12"}
+            onChange={(e) => setVal("Calculation.QuantityDiscountTiers", e.target.value)}
+            placeholder="1:0;5:5;20:12"
+          />
+        </label>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">AI / Import přijatých FA</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Gemini API klíč (free tier), volitelný OpenAI-compatible fallback (Ollama) a prahy auto-párování.

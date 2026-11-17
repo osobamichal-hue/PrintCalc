@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { apiJson, apiVoid, downloadUrl } from "@/lib/api";
 import { btnPrimary, btnSecondary, labelClass, linkAction, linkDanger, linkMuted, tableBody, tableHead, tableWrap } from "@/lib/ui";
-import type { Lookups } from "@/lib/types";
+import type { AppSettingRow, Lookups } from "@/lib/types";
 
 type CalcRow = {
   id: number;
@@ -34,6 +34,37 @@ type PriceQuote = {
   totalWithMargin: number;
   unitPriceForRequestedPiece: number;
 };
+
+type DiscountTier = { minPieces: number; discountPercent: number };
+
+const DEFAULT_DISCOUNT_TIERS: DiscountTier[] = [
+  { minPieces: 1, discountPercent: 0 },
+  { minPieces: 5, discountPercent: 5 },
+  { minPieces: 20, discountPercent: 12 },
+];
+
+function parseDiscountTiers(raw: string | undefined | null): DiscountTier[] {
+  if (!raw?.trim()) return DEFAULT_DISCOUNT_TIERS;
+  const tiers: DiscountTier[] = [];
+  for (const part of raw.split(";")) {
+    const idx = part.indexOf(":");
+    if (idx <= 0) continue;
+    const min = parseInt(part.slice(0, idx).trim(), 10);
+    const pct = parseFloat(part.slice(idx + 1).trim().replace(",", "."));
+    if (!Number.isFinite(min) || !Number.isFinite(pct)) continue;
+    tiers.push({ minPieces: Math.max(1, min), discountPercent: Math.max(0, pct) });
+  }
+  return tiers.length === 0 ? DEFAULT_DISCOUNT_TIERS : tiers.sort((a, b) => a.minPieces - b.minPieces);
+}
+
+function resolveDiscountTierMinPieces(requiredPieces: number, tiers: DiscountTier[], percent: number): number | null {
+  let best: DiscountTier | null = null;
+  for (const tier of tiers) {
+    if (requiredPieces >= tier.minPieces) best = tier;
+  }
+  if (!best || best.discountPercent !== percent) return null;
+  return best.minPieces;
+}
 
 type ModelMetadata = {
   estimatedMaterialGrams: number | null;
@@ -77,6 +108,7 @@ export default function CalculationsPage() {
   const [modelMeta, setModelMeta] = useState<ModelMetadata | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>(DEFAULT_DISCOUNT_TIERS);
 
   const loadLookups = useCallback(async () => {
     setLookups(await apiJson<Lookups>("/api/lookups"));
@@ -86,15 +118,26 @@ export default function CalculationsPage() {
     setList(await apiJson<CalcRow[]>("/api/calculations"));
   }, []);
 
+  const loadDiscountTiers = useCallback(async () => {
+    try {
+      const rows = await apiJson<AppSettingRow[]>("/api/settings");
+      const raw = rows.find((r) => r.key === "Calculation.QuantityDiscountTiers")?.value;
+      setDiscountTiers(parseDiscountTiers(raw));
+    } catch {
+      setDiscountTiers(DEFAULT_DISCOUNT_TIERS);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     setMsg(null);
     try {
       await loadLookups();
       await loadList();
+      await loadDiscountTiers();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Chyba");
     }
-  }, [loadList, loadLookups]);
+  }, [loadDiscountTiers, loadList, loadLookups]);
 
   useEffect(() => {
     void refresh();
@@ -650,9 +693,27 @@ export default function CalculationsPage() {
                   {preview.modelDesignCost} · Start {preview.startFeeCost} · Slicing{" "}
                   {preview.slicingFeeCost} · Post-proc. {preview.postProcessingCost}
                   {preview.quantityDiscountAmount > 0
-                    ? ` · Sleva -${preview.quantityDiscountAmount} (${preview.quantityDiscountPercent}%)`
+                    ? (() => {
+                        const from = resolveDiscountTierMinPieces(
+                          form.requiredPieces,
+                          discountTiers,
+                          preview.quantityDiscountPercent
+                        );
+                        const band =
+                          from != null
+                            ? `od ${from} ks: ${preview.quantityDiscountPercent}%`
+                            : `${preview.quantityDiscountPercent}%`;
+                        return ` · Množstevní sleva -${preview.quantityDiscountAmount} (${band})`;
+                      })()
                     : ""}
                 </div>
+                {preview.quantityDiscountAmount > 0 && (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Automatická sleva ze subtotalu podle pásem v Nastavení (
+                    <code className="text-[11px]">Calculation.QuantityDiscountTiers</code>
+                    ).
+                  </p>
+                )}
               </div>
             )}
 

@@ -29,9 +29,11 @@ type Stock = {
   filamentTypeName: string;
   remainingWeightKg: number;
   pieceCount: number;
+  purchasePricePerKg: number;
   receivedAt: string;
   lotNumber: string | null;
   expirationDate: string | null;
+  notes: string | null;
 };
 
 type StockAlert = {
@@ -49,7 +51,7 @@ type Movement = {
   note: string | null;
 };
 
-type ModalKind = "type" | "editType" | "receive" | "issue" | null;
+type ModalKind = "type" | "editType" | "editStock" | "receive" | "issue" | null;
 
 export default function FilamentsPage() {
   const [types, setTypes] = useState<FilamentType[]>([]);
@@ -66,6 +68,7 @@ export default function FilamentsPage() {
     diameterMm: 1.75,
     color: "",
     densityGPerCm3: 1.24,
+    averagePricePerKg: 0,
     minStockKg: 0,
     nozzleTempMinC: "" as string | number,
     nozzleTempMaxC: "" as string | number,
@@ -75,6 +78,14 @@ export default function FilamentsPage() {
   });
 
   const [editTypeId, setEditTypeId] = useState<number | null>(null);
+  const [editStockId, setEditStockId] = useState<number | null>(null);
+  const [stockForm, setStockForm] = useState({
+    purchasePricePerKg: 0,
+    lotNumber: "",
+    expirationDate: "",
+    notes: "",
+    pieceCount: 1,
+  });
 
   const [recv, setRecv] = useState({
     filamentTypeId: 0,
@@ -135,6 +146,7 @@ export default function FilamentsPage() {
   function closeModal() {
     setModal(null);
     setMsg(null);
+    setEditStockId(null);
   }
 
   function typePayload() {
@@ -150,6 +162,7 @@ export default function FilamentsPage() {
       color: typeForm.color || null,
       densityGPerCm3: typeForm.densityGPerCm3,
       minStockKg: typeForm.minStockKg,
+      averagePricePerKg: typeForm.averagePricePerKg,
       nozzleTempMinC: parseOptInt(typeForm.nozzleTempMinC),
       nozzleTempMaxC: parseOptInt(typeForm.nozzleTempMaxC),
       bedTempMinC: parseOptInt(typeForm.bedTempMinC),
@@ -165,6 +178,7 @@ export default function FilamentsPage() {
       diameterMm: 1.75,
       color: "",
       densityGPerCm3: 1.24,
+      averagePricePerKg: 0,
       minStockKg: 0,
       nozzleTempMinC: "",
       nozzleTempMaxC: "",
@@ -183,6 +197,7 @@ export default function FilamentsPage() {
       diameterMm: t.diameterMm,
       color: t.color ?? "",
       densityGPerCm3: t.densityGPerCm3,
+      averagePricePerKg: t.averagePricePerKg,
       minStockKg: t.minStockKg,
       nozzleTempMinC: t.nozzleTempMinC ?? "",
       nozzleTempMaxC: t.nozzleTempMaxC ?? "",
@@ -191,6 +206,41 @@ export default function FilamentsPage() {
       notes: t.notes ?? "",
     });
     setModal("editType");
+  }
+
+  function openEditStock(s: Stock) {
+    setEditStockId(s.id);
+    setStockForm({
+      purchasePricePerKg: s.purchasePricePerKg,
+      lotNumber: s.lotNumber ?? "",
+      expirationDate: s.expirationDate ? s.expirationDate.slice(0, 10) : "",
+      notes: s.notes ?? "",
+      pieceCount: s.pieceCount,
+    });
+    setModal("editStock");
+  }
+
+  async function saveStock(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editStockId) return;
+    setMsg(null);
+    try {
+      await apiVoid(`/api/filament-stocks/${editStockId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          purchasePricePerKg: stockForm.purchasePricePerKg,
+          lotNumber: stockForm.lotNumber || null,
+          expirationDate: stockForm.expirationDate ? new Date(stockForm.expirationDate).toISOString() : null,
+          notes: stockForm.notes || null,
+          pieceCount: stockForm.pieceCount,
+        }),
+      });
+      setEditStockId(null);
+      closeModal();
+      await refresh();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Chyba");
+    }
   }
 
   async function addType(e: React.FormEvent) {
@@ -383,16 +433,18 @@ export default function FilamentsPage() {
               <tr>
                 <th className="px-3 py-2">Typ</th>
                 <th className="px-3 py-2">Zbývá kg</th>
+                <th className="px-3 py-2">Kč/kg</th>
                 <th className="px-3 py-2">Kusů</th>
                 <th className="px-3 py-2">Šarže</th>
                 <th className="px-3 py-2">Expirace</th>
                 <th className="px-3 py-2">Přijato</th>
+                <th />
               </tr>
             </thead>
             <tbody className={tableBody}>
               {stocks.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                  <td colSpan={8} className="px-3 py-8 text-center text-zinc-500">
                     Sklad je prázdný.{" "}
                     <button type="button" className="text-amber-600 hover:underline dark:text-amber-400" onClick={() => setModal("receive")}>
                       Naskladnit
@@ -404,12 +456,18 @@ export default function FilamentsPage() {
                   <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                     <td className="px-3 py-2">{s.filamentTypeName}</td>
                     <td className="px-3 py-2">{s.remainingWeightKg}</td>
+                    <td className="px-3 py-2 text-zinc-500">{s.purchasePricePerKg.toFixed(2)}</td>
                     <td className="px-3 py-2">{s.pieceCount}</td>
                     <td className="px-3 py-2 text-zinc-500">{s.lotNumber ?? "—"}</td>
                     <td className="px-3 py-2 text-zinc-500">
                       {s.expirationDate ? new Date(s.expirationDate).toLocaleDateString("cs-CZ") : "—"}
                     </td>
                     <td className="px-3 py-2 text-zinc-500">{new Date(s.receivedAt).toLocaleString("cs-CZ")}</td>
+                    <td className="px-3 py-2">
+                      <button type="button" className="text-amber-600 hover:underline dark:text-amber-400" onClick={() => openEditStock(s)}>
+                        Upravit
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -465,6 +523,11 @@ export default function FilamentsPage() {
             <input placeholder="Barva" className={inputClass.replace("mt-1 ", "")} value={typeForm.color} onChange={(e) => setTypeForm((f) => ({ ...f, color: e.target.value }))} />
           </div>
           <label className={labelClass}>
+            Kč/kg
+            <input type="number" step="0.01" min={0} className={inputClass} value={typeForm.averagePricePerKg} onChange={(e) => setTypeForm((f) => ({ ...f, averagePricePerKg: parseFloat(e.target.value) || 0 }))} />
+          </label>
+          <p className="text-xs text-zinc-500">Vážený průměr ze skladu; lze nastavit ručně (příjem / úprava dávky průměr přepočítá).</p>
+          <label className={labelClass}>
             Min. zásoba (kg)
             <input type="number" step="0.001" min={0} className={inputClass} value={typeForm.minStockKg} onChange={(e) => setTypeForm((f) => ({ ...f, minStockKg: parseFloat(e.target.value) || 0 }))} />
           </label>
@@ -491,10 +554,48 @@ export default function FilamentsPage() {
             <input placeholder="Barva" className={inputClass.replace("mt-1 ", "")} value={typeForm.color} onChange={(e) => setTypeForm((f) => ({ ...f, color: e.target.value }))} />
           </div>
           <label className={labelClass}>
+            Kč/kg
+            <input type="number" step="0.01" min={0} className={inputClass} value={typeForm.averagePricePerKg} onChange={(e) => setTypeForm((f) => ({ ...f, averagePricePerKg: parseFloat(e.target.value) || 0 }))} />
+          </label>
+          <p className="text-xs text-zinc-500">Vážený průměr ze skladu; lze nastavit ručně (příjem / úprava dávky průměr přepočítá).</p>
+          <label className={labelClass}>
             Min. zásoba (kg)
             <input type="number" step="0.001" min={0} className={inputClass} value={typeForm.minStockKg} onChange={(e) => setTypeForm((f) => ({ ...f, minStockKg: parseFloat(e.target.value) || 0 }))} />
           </label>
           <textarea placeholder="Poznámky" className={inputClass.replace("mt-1 ", "")} value={typeForm.notes} onChange={(e) => setTypeForm((f) => ({ ...f, notes: e.target.value }))} />
+        </form>
+      </Modal>
+
+      <Modal
+        open={modal === "editStock"}
+        onClose={closeModal}
+        title={`Upravit skladovou kartu${editStockId ? ` #${editStockId}` : ""}`}
+        footer={
+          <>
+            <button type="button" onClick={closeModal} className={btnSecondary}>Zrušit</button>
+            <button type="submit" form="edit-stock-form" className={btnPrimary}>Uložit</button>
+          </>
+        }
+      >
+        {msg && modal === "editStock" && <StatusBanner message={msg} />}
+        <form id="edit-stock-form" onSubmit={(e) => void saveStock(e)} className="mt-3 space-y-3">
+          <label className={labelClass}>
+            Kč/kg
+            <input type="number" step="0.01" min={0} className={inputClass} value={stockForm.purchasePricePerKg} onChange={(e) => setStockForm((f) => ({ ...f, purchasePricePerKg: parseFloat(e.target.value) || 0 }))} />
+          </label>
+          <p className="text-xs text-zinc-500">Po uložení se přepočítá průměrná Kč/kg u typu filamentu.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input placeholder="Šarže / lot" className={inputClass.replace("mt-1 ", "")} value={stockForm.lotNumber} onChange={(e) => setStockForm((f) => ({ ...f, lotNumber: e.target.value }))} />
+            <label className={labelClass}>
+              Expirace
+              <input type="date" className={inputClass} value={stockForm.expirationDate} onChange={(e) => setStockForm((f) => ({ ...f, expirationDate: e.target.value }))} />
+            </label>
+          </div>
+          <label className={labelClass}>
+            Počet kusů
+            <input type="number" min={1} className={inputClass} value={stockForm.pieceCount} onChange={(e) => setStockForm((f) => ({ ...f, pieceCount: parseInt(e.target.value, 10) || 1 }))} />
+          </label>
+          <textarea placeholder="Poznámky" className={inputClass.replace("mt-1 ", "")} value={stockForm.notes} onChange={(e) => setStockForm((f) => ({ ...f, notes: e.target.value }))} />
         </form>
       </Modal>
 
